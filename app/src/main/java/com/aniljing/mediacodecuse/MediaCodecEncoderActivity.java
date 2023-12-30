@@ -84,28 +84,6 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
             }
 
         });
-//        mBinding.render.getHolder().addCallback(new SurfaceHolder.Callback2() {
-//            @Override
-//            public void surfaceRedrawNeeded(@NonNull SurfaceHolder holder) {
-//
-//            }
-//
-//            @Override
-//            public void surfaceCreated(@NonNull SurfaceHolder holder) {
-//                mDecoder = new CodecH264Decoder();
-//                mDecoder.initDecoder(holder.getSurface());
-//            }
-//
-//            @Override
-//            public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
-//
-//            }
-//
-//            @Override
-//            public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
-//
-//            }
-//        });
         mBinding.render.setEGLContextClientVersion(2);
         mBinding.render.setRenderer(new GLSurfaceView.Renderer() {
             @Override
