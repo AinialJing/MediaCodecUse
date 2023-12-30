@@ -21,7 +21,7 @@ import android.view.Surface;
 import android.view.TextureView;
 
 
-import com.aniljing.mediacodecuse.LogUtils;
+import com.aniljing.mediacodecuse.utils.LogUtils;
 
 import java.util.Arrays;
 

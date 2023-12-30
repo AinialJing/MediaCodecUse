@@ -19,6 +19,8 @@ import com.aniljing.mediacodecuse.camera2.Texture2dProgram;
 import com.aniljing.mediacodecuse.codec.CodecH264Decoder;
 import com.aniljing.mediacodecuse.codec.CodecH264Encoder;
 import com.aniljing.mediacodecuse.databinding.ActivityMediaCodecEncoderBinding;
+import com.aniljing.mediacodecuse.utils.LogUtils;
+import com.aniljing.mediacodecuse.utils.YUVTools;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -76,7 +78,9 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
         });
         mPreviewWithYUV.setYUVDataCallBack((i420, width, height) -> {
             if (mH264Encoder != null) {
-                mH264Encoder.putData(i420);
+                byte[] rotate=new byte[i420.length];
+                YUVTools.rotateP90(i420,rotate,width,height);
+                mH264Encoder.putData(rotate);
             }
 
         });

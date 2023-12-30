@@ -1,4 +1,4 @@
-package com.aniljing.mediacodecuse;
+package com.aniljing.mediacodecuse.utils;
 
 import android.util.Log;
 

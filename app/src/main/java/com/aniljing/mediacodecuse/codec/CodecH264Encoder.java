@@ -7,7 +7,7 @@ import android.media.MediaFormat;
 import androidx.annotation.NonNull;
 
 
-import com.aniljing.mediacodecuse.LogUtils;
+import com.aniljing.mediacodecuse.utils.LogUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

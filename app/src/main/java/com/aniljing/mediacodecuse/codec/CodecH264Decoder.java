@@ -8,7 +8,7 @@ import android.util.Log;
 import android.view.Surface;
 
 
-import com.aniljing.mediacodecuse.LogUtils;
+import com.aniljing.mediacodecuse.utils.LogUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
