@@ -17,6 +17,8 @@ add_library(
         yuvUtil
         SHARED
         nativeYuvUtil.cpp
+        RotateNV_UV.cpp
+        ConvertNV.cpp
 )
 
 target_link_libraries(

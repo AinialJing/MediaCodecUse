@@ -8,6 +8,8 @@ import androidx.annotation.NonNull;
 
 
 import com.aniljing.mediacodecuse.utils.LogUtils;
+import com.aniljing.mediacodecuse.utils.Orientation;
+import com.aniljing.mediacodecuse.utils.YuvUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -28,6 +30,7 @@ public class CodecH264Encoder {
     private byte[] output;
 
     private int pos = 0;
+    private YuvUtil yuvUtil;
 
 
     public void initCodec(EncodeCallBack callBack) {
@@ -35,6 +38,7 @@ public class CodecH264Encoder {
             yuv420 = new byte[m_width * m_height * 3 / 2];
             output = new byte[m_width * m_height * 3 / 2];
             mCallBack = callBack;
+            yuvUtil=new YuvUtil();
             mMediaCodecVideo = MediaCodec.createEncoderByType("video/avc");
             MediaFormat mediaFormatVideo = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, m_width, m_height);
             mediaFormatVideo.setInteger(MediaFormat.KEY_BIT_RATE, m_width * m_height * 5);
@@ -54,7 +58,10 @@ public class CodecH264Encoder {
                         yuv420 = data;
                         byte[] yuv420sp = new byte[m_width * m_height * 3 / 2];
                         YV12toNV12(yuv420, yuv420sp, m_width, m_height);
-                        yuv420 = yuv420sp;
+                        yuv420=yuv420sp;
+//                        yuv420 = yuv420sp;
+//                        yuvUtil.nv21ToNV12Rotate(yuv420,yuv420sp,m_width,m_height, Orientation.ROTATE90);
+//                        yuv420=yuv420sp;
                         ByteBuffer inputBuffer = codec.getInputBuffer(index);
                         inputBuffer.clear();
                         inputBuffer.put(yuv420);

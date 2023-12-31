@@ -9,250 +9,73 @@
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <string>
+#include "ConvertNV.h"
+#include "Log.h"
 
-//
-// Created by company on 2023-12-21.
-//
-enum Type {
-    TYPE_YUV420P_TO_RGB24 = 0,
-    TYPE_NV12_TO_RGB24 = 1,
-    TYPE_NV21_TO_RGB24 = 2
-};
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_aniljing_mediacodecuse_utils_YuvUtil_nv21ToNV12Rotate(JNIEnv *env, jobject clazz,
+                                                               jbyteArray nv21_, jbyteArray nv12_,
+                                                               jint w, jint h, jint orientation) {
+    jbyte *nv21 = env->GetByteArrayElements(nv21_, JNI_FALSE);
+    jbyte *nv12 = env->GetByteArrayElements(nv12_, JNI_FALSE);
 
-static jbyte *Src_i420_data;
-static jbyte *Src_i420_data_scale;
-static jbyte *Src_i420_data_rotate;
-
-JNIEXPORT void JNI_OnUnload(JavaVM *jvm, void *reserved) {
-    //进行释放
-    free(Src_i420_data);
-    free(Src_i420_data_scale);
-    free(Src_i420_data_rotate);
-}
-
-void scaleI420(jbyte *src_i420_data, jint width, jint height, jbyte *dst_i420_data, jint dst_width,
-               jint dst_height, jint mode);
-
-void rotateI420(jbyte *src_i420_data, jint width, jint height, jbyte *dst_i420_data, jint degree);
-
-void mirrorI420(jbyte *src_i420_data, jint width, jint height, jbyte *dst_i420_data);
-
-void nv21ToI420(jbyte *src_nv21_data, jint width, jint height, jbyte *src_i420_data);
-
-void ThrowException(JNIEnv *env, const char *exception, const char *message);
-
-
-void ThrowException(JNIEnv *env, const char *exception, const char *message) {
-    jclass clazz = env->FindClass(exception);
-    if (NULL != clazz) {
-        env->ThrowNew(clazz, message);
+    int ySize = w * h;
+    const uint8_t *nv21Y = reinterpret_cast<const uint8_t *>(nv21);
+    const uint8_t *nv21VU = nv21Y + ySize;
+    uint8_t *nv12Y = reinterpret_cast<uint8_t *>(nv12);
+    uint8_t *nv12UV = nv12Y + ySize;
+    LOGD("nv21Rotate %d", orientation);
+    switch (orientation) {
+        case libyuv::kRotate0:
+            NV21ToNV12Rotate(nv21Y, w, nv21VU, w, nv12Y, w, nv12UV, w, w, h, libyuv::kRotate0);
+            break;
+        case libyuv::kRotate90:
+            NV21ToNV12Rotate(nv21Y, w, nv21VU, w, nv12Y, h, nv12UV, h, w, h, libyuv::kRotate90);
+            break;
+        case libyuv::kRotate180:
+            NV21ToNV12Rotate(nv21Y, w, nv21VU, w, nv12Y, w, nv12UV, w, w, h, libyuv::kRotate180);
+            break;
+        case libyuv::kRotate270:
+            NV21ToNV12Rotate(nv21Y, w, nv21VU, w, nv12Y, h, nv12UV, h, w, h, libyuv::kRotate270);
+            break;
     }
+
+    env->ReleaseByteArrayElements(nv21_, nv21, 0);
+    env->ReleaseByteArrayElements(nv12_, nv12, 0);
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_YuvUtil_rotateI420(JNIEnv *env, jobject thiz,
-                                                   jbyteArray src_i420_data,
-                                                   jint width, jint height,
-                                                   jbyteArray dst_i420_data,
-                                                   jint degree) {
-    jbyte *Src_data = env->GetByteArrayElements(src_i420_data, NULL);
-    jbyte *Dst_data = env->GetByteArrayElements(dst_i420_data, NULL);
-    rotateI420(Src_data, width, height, Src_i420_data_rotate, degree);
-    mirrorI420(Src_i420_data_rotate, width, height, Dst_data);
-    env->ReleaseByteArrayElements(dst_i420_data, Dst_data, 0);
-}
+Java_com_aniljing_mediacodecuse_utils_YuvUtil_nv21Rotate(JNIEnv *env, jclass clazz, jbyteArray nv21_,
+                                                         jbyteArray outs_, jint w, jint h,
+                                                         jint orientation) {
+    jbyte *nv21 = env->GetByteArrayElements(nv21_, JNI_FALSE);
+    jbyte *outs = env->GetByteArrayElements(outs_, JNI_FALSE);
 
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_YuvUtil_init(JNIEnv *env, jclass clazz, jint width, jint height,
-                                             jint dst_width, jint dst_height) {
-    Src_i420_data = (jbyte *) malloc(sizeof(jbyte) * width * height * 3 / 2);
-    Src_i420_data_scale = (jbyte *) malloc(sizeof(jbyte) * dst_width * dst_height * 3 / 2);
-    Src_i420_data_rotate = (jbyte *) malloc(sizeof(jbyte) * dst_width * dst_height * 3 / 2);
+    int ySize = w * h;
+    const uint8_t *nv21Y = reinterpret_cast<const uint8_t *>(nv21);
+    const uint8_t *nv21VU = nv21Y + ySize;
 
-}
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_YuvUtil_compressYUV(JNIEnv *env, jclass clazz, jbyteArray src_,
-                                                    jint width, jint height, jbyteArray dst_,
-                                                    jint dst_width, jint dst_height, jint mode,
-                                                    jint degree, jboolean isMirror) {
-    jbyte *Src_data = env->GetByteArrayElements(src_, NULL);
-    jbyte *Dst_data = env->GetByteArrayElements(dst_, NULL);
-    //nv21转化为i420
-    nv21ToI420(Src_data, width, height, Src_i420_data);
-    //进行缩放的操作
-    scaleI420(Src_i420_data, width, height, Src_i420_data_scale, dst_width, dst_height, mode);
-    if (isMirror) {
-        //进行旋转的操作
-        rotateI420(Src_i420_data_scale, dst_width, dst_height, Src_i420_data_rotate, degree);
-        //因为旋转的角度都是90和270，那后面的数据width和height是相反的
-        mirrorI420(Src_i420_data_rotate, dst_height, dst_width, Dst_data);
-    } else {
-        rotateI420(Src_i420_data_scale, dst_width, dst_height, Dst_data, degree);
-    }
-    env->ReleaseByteArrayElements(dst_, Dst_data, 0);
+    uint8_t *outsY = reinterpret_cast<uint8_t *>(outs);
+    uint8_t *outsVU = outsY + ySize;
 
-}
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_YuvUtil_cropYUV(JNIEnv *env, jclass clazz, jbyteArray src_,
-                                                jint width, jint height, jbyteArray dst_,
-                                                jint dst_width, jint dst_height, jint left,
-                                                jint top) {
-    //裁剪的区域大小不对
-    if (left + dst_width > width || top + dst_height > height) {
-        return;
+    LOGD("nv21Rotate %d", orientation);
+    switch (orientation) {
+        case libyuv::kRotate0:
+            memcpy(outsY, nv21Y, env->GetArrayLength(nv21_));//直接拷贝内存
+            break;
+        case libyuv::kRotate90:
+            NV21Rotate(nv21Y, w, nv21VU, w, outsY, h, outsVU, h, w, h, libyuv::kRotate90);
+            break;
+        case libyuv::kRotate180:
+            NV21Rotate(nv21Y, w, nv21VU, w, outsY, w, outsVU, w, w, h, libyuv::kRotate180);
+            break;
+        case libyuv::kRotate270:
+            NV21Rotate(nv21Y, w, nv21VU, w, outsY, h, outsVU, h, w, h, libyuv::kRotate270);
+            break;
     }
 
-    //left和top必须为偶数，否则显示会有问题
-    if (left % 2 != 0 || top % 2 != 0) {
-        return;
-    }
-
-    jint src_length = env->GetArrayLength(src_);
-    jbyte *src_i420_data = env->GetByteArrayElements(src_, NULL);
-    jbyte *dst_i420_data = env->GetByteArrayElements(dst_, NULL);
-
-
-    jint dst_i420_y_size = dst_width * dst_height;
-    jint dst_i420_u_size = (dst_width >> 1) * (dst_height >> 1);
-
-    jbyte *dst_i420_y_data = dst_i420_data;
-    jbyte *dst_i420_u_data = dst_i420_data + dst_i420_y_size;
-    jbyte *dst_i420_v_data = dst_i420_data + dst_i420_y_size + dst_i420_u_size;
-
-    libyuv::ConvertToI420((const uint8_t *) src_i420_data, src_length,
-                          (uint8_t *) dst_i420_y_data, dst_width,
-                          (uint8_t *) dst_i420_u_data, dst_width >> 1,
-                          (uint8_t *) dst_i420_v_data, dst_width >> 1,
-                          left, top,
-                          width, height,
-                          dst_width, dst_height,
-                          libyuv::kRotate0, libyuv::FOURCC_I420);
-
-    env->ReleaseByteArrayElements(dst_, dst_i420_data, 0);
-
-}
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_YuvUtil_yuvI420ToNV21(JNIEnv *env, jclass clazz,
-                                                      jbyteArray i420Src, jbyteArray nv21Src,
-                                                      jint width, jint height) {
-    jbyte *src_i420_data = env->GetByteArrayElements(i420Src, NULL);
-    jbyte *src_nv21_data = env->GetByteArrayElements(nv21Src, NULL);
-
-    jint src_y_size = width * height;
-    jint src_u_size = (width >> 1) * (height >> 1);
-
-    jbyte *src_i420_y_data = src_i420_data;
-    jbyte *src_i420_u_data = src_i420_data + src_y_size;
-    jbyte *src_i420_v_data = src_i420_data + src_y_size + src_u_size;
-
-    jbyte *src_nv21_y_data = src_nv21_data;
-    jbyte *src_nv21_vu_data = src_nv21_data + src_y_size;
-
-
-    libyuv::I420ToNV21(
-            (const uint8_t *) src_i420_y_data, width,
-            (const uint8_t *) src_i420_u_data, width >> 1,
-            (const uint8_t *) src_i420_v_data, width >> 1,
-            (uint8_t *) src_nv21_y_data, width,
-            (uint8_t *) src_nv21_vu_data, width,
-            width, height);
-
-}
-
-void scaleI420(jbyte *src_i420_data, jint width, jint height, jbyte *dst_i420_data, jint dst_width,
-               jint dst_height, jint mode) {
-
-    jint src_i420_y_size = width * height;
-    jint src_i420_u_size = (width >> 1) * (height >> 1);
-    jbyte *src_i420_y_data = src_i420_data;
-    jbyte *src_i420_u_data = src_i420_data + src_i420_y_size;
-    jbyte *src_i420_v_data = src_i420_data + src_i420_y_size + src_i420_u_size;
-
-    jint dst_i420_y_size = dst_width * dst_height;
-    jint dst_i420_u_size = (dst_width >> 1) * (dst_height >> 1);
-    jbyte *dst_i420_y_data = dst_i420_data;
-    jbyte *dst_i420_u_data = dst_i420_data + dst_i420_y_size;
-    jbyte *dst_i420_v_data = dst_i420_data + dst_i420_y_size + dst_i420_u_size;
-
-    libyuv::I420Scale((const uint8_t *) src_i420_y_data, width,
-                      (const uint8_t *) src_i420_u_data, width >> 1,
-                      (const uint8_t *) src_i420_v_data, width >> 1,
-                      width, height,
-                      (uint8_t *) dst_i420_y_data, dst_width,
-                      (uint8_t *) dst_i420_u_data, dst_width >> 1,
-                      (uint8_t *) dst_i420_v_data, dst_width >> 1,
-                      dst_width, dst_height,
-                      (libyuv::FilterMode) mode);
-}
-
-void rotateI420(jbyte *src_i420_data, jint width, jint height, jbyte *dst_i420_data, jint degree) {
-    jint src_i420_y_size = width * height;
-    jint src_i420_u_size = (width >> 1) * (height >> 1);
-
-    jbyte *src_i420_y_data = src_i420_data;
-    jbyte *src_i420_u_data = src_i420_data + src_i420_y_size;
-    jbyte *src_i420_v_data = src_i420_data + src_i420_y_size + src_i420_u_size;
-
-    jbyte *dst_i420_y_data = dst_i420_data;
-    jbyte *dst_i420_u_data = dst_i420_data + src_i420_y_size;
-    jbyte *dst_i420_v_data = dst_i420_data + src_i420_y_size + src_i420_u_size;
-
-    //要注意这里的width和height在旋转之后是相反的
-    if (degree == libyuv::kRotate90 || degree == libyuv::kRotate270) {
-        libyuv::I420Rotate((const uint8_t *) src_i420_y_data, width,
-                           (const uint8_t *) src_i420_u_data, width >> 1,
-                           (const uint8_t *) src_i420_v_data, width >> 1,
-                           (uint8_t *) dst_i420_y_data, height,
-                           (uint8_t *) dst_i420_u_data, height >> 1,
-                           (uint8_t *) dst_i420_v_data, height >> 1,
-                           width, height,
-                           (libyuv::RotationMode) degree);
-    }
-}
-
-void mirrorI420(jbyte *src_i420_data, jint width, jint height, jbyte *dst_i420_data) {
-    jint src_i420_y_size = width * height;
-    jint src_i420_u_size = (width >> 1) * (height >> 1);
-
-    jbyte *src_i420_y_data = src_i420_data;
-    jbyte *src_i420_u_data = src_i420_data + src_i420_y_size;
-    jbyte *src_i420_v_data = src_i420_data + src_i420_y_size + src_i420_u_size;
-
-    jbyte *dst_i420_y_data = dst_i420_data;
-    jbyte *dst_i420_u_data = dst_i420_data + src_i420_y_size;
-    jbyte *dst_i420_v_data = dst_i420_data + src_i420_y_size + src_i420_u_size;
-
-    libyuv::I420Mirror((const uint8_t *) src_i420_y_data, width,
-                       (const uint8_t *) src_i420_u_data, width >> 1,
-                       (const uint8_t *) src_i420_v_data, width >> 1,
-                       (uint8_t *) dst_i420_y_data, width,
-                       (uint8_t *) dst_i420_u_data, width >> 1,
-                       (uint8_t *) dst_i420_v_data, width >> 1,
-                       width, height);
-}
-
-
-void nv21ToI420(jbyte *src_nv21_data, jint width, jint height, jbyte *src_i420_data) {
-    jint src_y_size = width * height;
-    jint src_u_size = (width >> 1) * (height >> 1);
-
-    jbyte *src_nv21_y_data = src_nv21_data;
-    jbyte *src_nv21_vu_data = src_nv21_data + src_y_size;
-
-    jbyte *src_i420_y_data = src_i420_data;
-    jbyte *src_i420_u_data = src_i420_data + src_y_size;
-    jbyte *src_i420_v_data = src_i420_data + src_y_size + src_u_size;
-
-
-    libyuv::NV21ToI420((const uint8_t *) src_nv21_y_data, width,
-                       (const uint8_t *) src_nv21_vu_data, width,
-                       (uint8_t *) src_i420_y_data, width,
-                       (uint8_t *) src_i420_u_data, width >> 1,
-                       (uint8_t *) src_i420_v_data, width >> 1,
-                       width, height);
+    env->ReleaseByteArrayElements(nv21_, nv21, 0);
+    env->ReleaseByteArrayElements(outs_, outs, 0);
 }

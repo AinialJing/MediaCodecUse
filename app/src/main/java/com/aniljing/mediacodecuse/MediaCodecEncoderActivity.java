@@ -20,7 +20,9 @@ import com.aniljing.mediacodecuse.codec.CodecH264Decoder;
 import com.aniljing.mediacodecuse.codec.CodecH264Encoder;
 import com.aniljing.mediacodecuse.databinding.ActivityMediaCodecEncoderBinding;
 import com.aniljing.mediacodecuse.utils.LogUtils;
+import com.aniljing.mediacodecuse.utils.Orientation;
 import com.aniljing.mediacodecuse.utils.YUVTools;
+import com.aniljing.mediacodecuse.utils.YuvUtil;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -58,6 +60,7 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
     private FloatBuffer fullVertexBuffer = getBufferFromArray(fullVertex);
     private FloatBuffer fullTextureBuffer = getBufferFromArray(fullTexture);
     private static final String[] PERMISSION={Manifest.permission.CAMERA};
+    private YuvUtil yuvUtil;
 
 
 
@@ -66,6 +69,7 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         mContext = this;
         mBinding = ActivityMediaCodecEncoderBinding.inflate(getLayoutInflater());
+        yuvUtil=new YuvUtil();
         setContentView(mBinding.getRoot());
         checkPermission();
         mPreviewWithYUV = new Camera2ProviderPreviewWithYUV(MediaCodecEncoderActivity.this);
@@ -78,9 +82,12 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
         });
         mPreviewWithYUV.setYUVDataCallBack((i420, width, height) -> {
             if (mH264Encoder != null) {
-                byte[] rotate=new byte[i420.length];
-                YUVTools.rotateP90(i420,rotate,width,height);
-                mH264Encoder.putData(rotate);
+//                byte[] rotate=new byte[i420.length];
+//                YUVTools.rotateP90(i420,rotate,width,height);
+                byte[] outs=new byte[i420.length];
+
+                yuvUtil.nv21Rotate(i420,outs,width,height, Orientation.ROTATE90);
+                mH264Encoder.putData(outs);
             }
 
         });
