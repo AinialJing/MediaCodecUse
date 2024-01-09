@@ -204,8 +204,15 @@ public class Camera2ProviderPreviewWithYUV {
                     else if (y.length / u.length == 4) {
                         yuv420ToYuv420sp(y, u, v, nv21, planes[0].getRowStride(), mPreviewSize.getHeight());
                     }
+//                    byte[] i420=new byte[nv21.length];
+                    nv21_rotated=new byte[nv21.length];
+                    nv12=new byte[nv21.length];
+                    nv21_rotate_to_90(nv21,nv21_rotated, mPreviewSize.getHeight(),planes[0].getRowStride());
+//                    mMediaUtil.nv21ToI420(nv21,planes[0].getRowStride(), mPreviewSize.getHeight(), i420);
+//                    mMediaUtil.i420Rotate(i420,planes[0].getRowStride(), mPreviewSize.getHeight(), nv21_rotated,orientation);
+                    nv21toNV12(nv21_rotated,nv12);
                     if (mYUVDataCallBack != null) {
-                        mYUVDataCallBack.yuvData(nv21, planes[0].getRowStride(), mPreviewSize.getHeight(), 0);
+                        mYUVDataCallBack.yuvData(nv12, planes[0].getRowStride(), mPreviewSize.getHeight(), orientation);
                     }
                 }
                 lock.unlock();

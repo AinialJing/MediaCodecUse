@@ -3,13 +3,12 @@ plugins {
 }
 
 android {
-    compileSdkVersion 28
-    buildToolsVersion "28.0.2"
+    compileSdk 33
 
     defaultConfig {
         applicationId "com.aniljing.mediacodecuse"
         minSdk 24
-        targetSdk 28
+        targetSdk 33
         versionCode 1
         versionName "1.0"
 
@@ -51,15 +50,8 @@ android {
 }
 
 dependencies {
-<<<<<<< HEAD
 
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.8.0'
     implementation 'pub.devrel:easypermissions:3.0.0'
-=======
-    implementation 'androidx.appcompat:appcompat-resources:1.2.0'
-    implementation 'androidx.appcompat:appcompat:1.2.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
-    implementation 'com.google.android.material:material:1.2.0'
->>>>>>> 15f3451e96fbe19aba5886a1e4e9a65e0d4ce215
 }

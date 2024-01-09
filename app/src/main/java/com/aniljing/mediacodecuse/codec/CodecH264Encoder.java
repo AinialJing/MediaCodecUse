@@ -26,8 +26,6 @@ public class CodecH264Encoder {
     private long m_nCount = 0;
     private long timeStamp = 0;
     private boolean startEncode = false;
-    private File mFile = new File(Environment.getExternalStorageDirectory(), "keyFrame.h264");
-    private BufferedOutputStream bos;
     private boolean keyFrame = false;
 
 
@@ -44,16 +42,6 @@ public class CodecH264Encoder {
             mediaFormatVideo.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
             mMediaCodecVideo.configure(mediaFormatVideo, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
             mMediaCodecVideo.start();
-            if (mFile.exists()) {
-                mFile.delete();
-            }
-            if (bos == null) {
-                try {
-                    bos = new BufferedOutputStream(new FileOutputStream(mFile));
-                } catch (FileNotFoundException e) {
-                    throw new RuntimeException(e);
-                }
-            }
         } catch (IOException e) {
             LogUtils.e(TAG, e.toString());
             throw new RuntimeException(e);
@@ -102,13 +90,6 @@ public class CodecH264Encoder {
                     ByteBuffer outputBuffer = outputBuffers[outputIndex];
                     byte[] outData = new byte[bufferInfo.size];
                     outputBuffer.get(outData);
-                    if (bos != null) {
-                        try {
-                            bos.write(data);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
                     if (mCallBack != null) {
                         mCallBack.encodeData(outData, bufferInfo.presentationTimeUs);
                     }
@@ -134,15 +115,6 @@ public class CodecH264Encoder {
             mMediaCodecVideo.release();
             mMediaCodecVideo = null;
             timeStamp = 0;
-            if (bos != null) {
-                try {
-                    bos.flush();
-                    bos.close();
-                    bos = null;
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
         }
     }
 
