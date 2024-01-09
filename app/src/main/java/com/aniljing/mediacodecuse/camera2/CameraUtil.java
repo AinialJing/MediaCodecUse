@@ -7,6 +7,7 @@ import android.media.Image;
 import java.nio.ByteBuffer;
 
 public class CameraUtil {
+    private static final String TAG = CameraUtil.class.getSimpleName();
     public static final int COLOR_FormatI420 = 1;
     public static final int COLOR_FormatNV21 = 2;
 
@@ -92,7 +93,7 @@ public class CameraUtil {
                 }
             }
             if (callBack != null) {
-                callBack.yuvData(data, image.getWidth(), image.getHeight());
+                callBack.yuvData(data, image.getWidth(), image.getHeight(),0);
             }
             image.close();
         } catch (Exception e) {
@@ -100,5 +101,17 @@ public class CameraUtil {
         }
     }
 
+    private void yuvToNv21(byte[] y, byte[] u, byte[] v, byte[] nv21, int stride, int height) {
+        System.arraycopy(y, 0, nv21, 0, y.length);
+        // 注意，若length值为 y.length * 3 / 2 会有数组越界的风险，需使用真实数据长度计算
+        int length = y.length + u.length / 2 + v.length / 2;
+        int uIndex = 0, vIndex = 0;
+        for (int i = stride * height; i < length; i += 2) {
+            nv21[i] = v[vIndex];
+            nv21[i + 1] = u[uIndex];
+            vIndex += 2;
+            uIndex += 2;
+        }
+    }
 
 }

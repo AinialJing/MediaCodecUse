@@ -3,13 +3,13 @@ plugins {
 }
 
 android {
-    namespace 'com.aniljing.mediacodecuse'
-    compileSdk 33
+    compileSdkVersion 28
+    buildToolsVersion "28.0.2"
 
     defaultConfig {
         applicationId "com.aniljing.mediacodecuse"
         minSdk 24
-        targetSdk 33
+        targetSdk 28
         versionCode 1
         versionName "1.0"
 
@@ -40,16 +40,19 @@ android {
             version '3.18.1'
         }
     }
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/jniLibs/lib']
+        }
+    }
     buildFeatures {
         viewBinding true
     }
 }
 
 dependencies {
-
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.8.0'
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    implementation 'androidx.appcompat:appcompat-resources:1.2.0'
+    implementation 'androidx.appcompat:appcompat:1.2.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
+    implementation 'com.google.android.material:material:1.2.0'
 }

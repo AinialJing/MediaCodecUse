@@ -15,8 +15,6 @@ import java.nio.ByteBuffer;
 
 public class CodecH264Decoder {
     private static final String TAG = CodecH264Decoder.class.getSimpleName();
-    private static final int WIDTH = 1280;
-    private static final int HEIGHT = 720;
     private long m_nCount = 0;
 
     private MediaCodec decoder;
@@ -24,10 +22,10 @@ public class CodecH264Decoder {
     private HandlerThread thread;
     private Handler mHandler;
 
-    public void initDecoder(Surface surface) {
+    public void initDecoder(Surface surface,int width,int height) {
         try {
             decoder = MediaCodec.createDecoderByType("video/avc");
-            MediaFormat mediaFormatVideo = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, WIDTH, HEIGHT);
+            MediaFormat mediaFormatVideo = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height);
             decoder.configure(mediaFormatVideo, surface, null, 0);
             thread = new HandlerThread("videoCodec");
             thread.start();
