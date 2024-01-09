@@ -7,13 +7,7 @@ import android.graphics.SurfaceTexture;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
-import android.os.Environment;
 import android.view.Surface;
-
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-
 
 import com.aniljing.mediacodecuse.camera2.Camera2ProviderPreviewWithYUV;
 import com.aniljing.mediacodecuse.camera2.GlUtil;
@@ -22,29 +16,22 @@ import com.aniljing.mediacodecuse.codec.CodecH264Decoder;
 import com.aniljing.mediacodecuse.codec.CodecH264Encoder;
 import com.aniljing.mediacodecuse.databinding.ActivityMediaCodecEncoderBinding;
 import com.aniljing.mediacodecuse.utils.LogUtils;
-import com.aniljing.mediacodecuse.utils.Orientation;
-import com.aniljing.mediacodecuse.utils.YUVTools;
-import com.aniljing.mediacodecuse.utils.YuvUtil;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.List;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-import pub.devrel.easypermissions.EasyPermissions;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
-public class MediaCodecEncoderActivity extends AppCompatActivity implements EasyPermissions.PermissionCallbacks{
+public class MediaCodecEncoderActivity extends AppCompatActivity {
     private static final String TAG = MediaCodecEncoderActivity.class.getSimpleName();
     private ActivityMediaCodecEncoderBinding mBinding;
     private Context mContext;
+    //    private Camera2Helper mCamera2Helper;
     private Camera2ProviderPreviewWithYUV mPreviewWithYUV;
     private CodecH264Encoder mH264Encoder;
     private CodecH264Decoder mDecoder;
@@ -55,24 +42,22 @@ public class MediaCodecEncoderActivity extends AppCompatActivity implements Easy
     private Surface decoderSurface;
     private final float[] mSTMatrix = new float[16];
     //构造顶点坐标、纹理坐标的buffer
-    private float[] fullVertex = new float[]{
+    private final float[] fullVertex = new float[]{
             -1.0f, 1.0f,
             1.0f, 1.0f,
             -1.0f, -1.0f,
             1.0f, -1.0f
     };
-    private float[] fullTexture = new float[]{
+    private final float[] fullTexture = new float[]{
             0.0f, 1.0f,
             1.0f, 1.0f,
             0.0f, 0.0f,
             1.0f, 0.0f
     };
-    private FloatBuffer fullVertexBuffer = getBufferFromArray(fullVertex);
-    private FloatBuffer fullTextureBuffer = getBufferFromArray(fullTexture);
-    private static final String[] PERMISSION = {Manifest.permission.WRITE_EXTERNAL_STORAGE,Manifest.permission.READ_EXTERNAL_STORAGE,Manifest.permission.CAMERA};
-    private YuvUtil yuvUtil;
-    private File file = new File(Environment.getExternalStorageDirectory(), "rotate.h264");
-    private BufferedOutputStream fos;
+    private final FloatBuffer fullVertexBuffer = getBufferFromArray(fullVertex);
+    private final FloatBuffer fullTextureBuffer = getBufferFromArray(fullTexture);
+    private static final String[] PERMISSION = {Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
+    private long start;
 
 
     @Override
@@ -80,41 +65,28 @@ public class MediaCodecEncoderActivity extends AppCompatActivity implements Easy
         super.onCreate(savedInstanceState);
         mContext = this;
         mBinding = ActivityMediaCodecEncoderBinding.inflate(getLayoutInflater());
-        yuvUtil = new YuvUtil();
         setContentView(mBinding.getRoot());
-        if (!EasyPermissions.hasPermissions(mContext,PERMISSION)){
-            EasyPermissions.requestPermissions(MediaCodecEncoderActivity.this,"应用申请权限",2002,PERMISSION);
-        }else{
-            if (file.exists()) {
-                file.delete();
-            }
-            try {
-                fos = new BufferedOutputStream(new FileOutputStream(file));
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-            mPreviewWithYUV = new Camera2ProviderPreviewWithYUV(MediaCodecEncoderActivity.this);
-            mPreviewWithYUV.initTexture(mBinding.preview);
-            mH264Encoder = new CodecH264Encoder();
-            mH264Encoder.initCodec(data -> {
-                if (mDecoder != null) {
-                    mDecoder.decode(data, data.length);
-                }
-            });
-            mPreviewWithYUV.setYUVDataCallBack((i420, width, height) -> {
-                if (mH264Encoder != null) {
-                    byte[] outs = new byte[i420.length];
-                    yuvUtil.nv21Rotate(i420, outs, width, height, Orientation.ROTATE90);
-                    mH264Encoder.putData(outs);
-                    try {
-                        fos.write(outs);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+        checkPermission();
+        mPreviewWithYUV = new Camera2ProviderPreviewWithYUV(this);
+        mPreviewWithYUV.initTexture(mBinding.preview);
+        mPreviewWithYUV.setYUVDataCallBack((nv12, width, height, orientation) -> {
+            if (mH264Encoder == null) {
+                mH264Encoder = new CodecH264Encoder();
+                mH264Encoder.initCodec((data, presentationTimeUs) -> {
+                    if (mDecoder != null) {
+                        mDecoder.decode(data, data.length);
                     }
-                }
-
-            });
-        }
+                }, width, height, orientation);
+                mH264Encoder.startEncode();
+            }
+            if (decoderSurface != null && mDecoder == null) {
+                mDecoder = new CodecH264Decoder();
+                mDecoder.initDecoder(decoderSurface, orientation == 90 ? height : width, orientation == 90 ? width : height);
+            }
+            if (mH264Encoder != null) {
+                mH264Encoder.putData(nv12);
+            }
+        });
         mBinding.render.setEGLContextClientVersion(2);
         mBinding.render.setRenderer(new GLSurfaceView.Renderer() {
             @Override
@@ -126,8 +98,6 @@ public class MediaCodecEncoderActivity extends AppCompatActivity implements Easy
                 videoTexture.setOnFrameAvailableListener(surfaceTexture -> {
                     mBinding.render.requestRender();
                 });
-                mDecoder = new CodecH264Decoder();
-                mDecoder.initDecoder(decoderSurface);
             }
 
             @Override
@@ -146,15 +116,14 @@ public class MediaCodecEncoderActivity extends AppCompatActivity implements Easy
             }
         });
         mBinding.render.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-
+        mBinding.startPushStream.setOnClickListener((view) -> {
+        });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (mBinding.render!=null) {
-            mBinding.render.onResume();
-        }
+        mBinding.render.onResume();
     }
 
     @Override
@@ -184,15 +153,6 @@ public class MediaCodecEncoderActivity extends AppCompatActivity implements Easy
             texture2dProgream.release();
             texture2dProgream = null;
         }
-        if (fos != null) {
-            try {
-                fos.flush();
-                fos.close();
-                fos=null;
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
     }
 
     private FloatBuffer getBufferFromArray(float[] array) {
@@ -203,19 +163,13 @@ public class MediaCodecEncoderActivity extends AppCompatActivity implements Easy
         return buffer;
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
+    private boolean checkPermission() {
+        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mContext, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(mContext, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            //申请权限
+            ActivityCompat.requestPermissions(this, PERMISSION, 2000);
+            return false;
+        }
+        return true;
     }
 
-    @Override
-    public void onPermissionsGranted(int requestCode, @NonNull List<String> perms) {
-       LogUtils.i(TAG,perms.toString());
-    }
-
-    @Override
-    public void onPermissionsDenied(int requestCode, @NonNull List<String> perms) {
-
-    }
 }
