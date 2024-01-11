@@ -7,6 +7,7 @@ import android.graphics.SurfaceTexture;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.Surface;
 
 import com.aniljing.mediacodecuse.camera2.Camera2ProviderPreviewWithYUV;
@@ -17,6 +18,11 @@ import com.aniljing.mediacodecuse.codec.CodecH264Encoder;
 import com.aniljing.mediacodecuse.databinding.ActivityMediaCodecEncoderBinding;
 import com.aniljing.mediacodecuse.utils.LogUtils;
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -58,7 +64,9 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
     private final FloatBuffer fullTextureBuffer = getBufferFromArray(fullTexture);
     private static final String[] PERMISSION = {Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE};
     private long start;
-
+    private int frameIndex = 0;
+    private File encodeFile = new File(Environment.getExternalStorageDirectory(), "encode.h264");
+    private BufferedOutputStream bosEncode;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,12 +75,31 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
         mBinding = ActivityMediaCodecEncoderBinding.inflate(getLayoutInflater());
         setContentView(mBinding.getRoot());
         checkPermission();
+        if (encodeFile.exists()) {
+            encodeFile.delete();
+        }
+        if (bosEncode == null) {
+            try {
+                bosEncode = new BufferedOutputStream(new FileOutputStream(encodeFile));
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
         mPreviewWithYUV = new Camera2ProviderPreviewWithYUV(this);
         mPreviewWithYUV.initTexture(mBinding.preview);
         mPreviewWithYUV.setYUVDataCallBack((nv12, width, height, orientation) -> {
             if (mH264Encoder == null) {
                 mH264Encoder = new CodecH264Encoder();
                 mH264Encoder.initCodec((data, presentationTimeUs) -> {
+                    try {
+                        if (bosEncode != null) {
+                            bosEncode.write(data);
+                        }
+                    } catch (FileNotFoundException e) {
+                        throw new RuntimeException(e);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                     if (mDecoder != null) {
                         mDecoder.decode(data, data.length);
                     }
@@ -86,7 +113,29 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
             if (mH264Encoder != null) {
                 mH264Encoder.putData(nv12);
             }
+            frameIndex++;
         });
+//        mBinding.render.getHolder().addCallback(new SurfaceHolder.Callback2() {
+//            @Override
+//            public void surfaceRedrawNeeded(SurfaceHolder holder) {
+//
+//            }
+//
+//            @Override
+//            public void surfaceCreated(SurfaceHolder holder) {
+//                decoderSurface = holder.getSurface();
+//            }
+//
+//            @Override
+//            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+//
+//            }
+//
+//            @Override
+//            public void surfaceDestroyed(SurfaceHolder holder) {
+//
+//            }
+//        });
         mBinding.render.setEGLContextClientVersion(2);
         mBinding.render.setRenderer(new GLSurfaceView.Renderer() {
             @Override
@@ -152,6 +201,15 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
             LogUtils.e(TAG, "Release texture2dProgream");
             texture2dProgream.release();
             texture2dProgream = null;
+        }
+        if (bosEncode != null) {
+            try {
+                bosEncode.flush();
+                bosEncode.close();
+                bosEncode = null;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

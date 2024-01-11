@@ -7,7 +7,6 @@ import android.os.HandlerThread;
 import android.util.Log;
 import android.view.Surface;
 
-
 import com.aniljing.mediacodecuse.utils.LogUtils;
 
 import java.io.IOException;
@@ -25,8 +24,8 @@ public class CodecH264Decoder {
     public void initDecoder(Surface surface,int width,int height) {
         try {
             decoder = MediaCodec.createDecoderByType("video/avc");
-            MediaFormat mediaFormatVideo = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height);
-            decoder.configure(mediaFormatVideo, surface, null, 0);
+            MediaFormat mediaEncodeFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height);
+            decoder.configure(mediaEncodeFormat, surface, null, 0);
             thread = new HandlerThread("videoCodec");
             thread.start();
             mHandler = new Handler(thread.getLooper());

@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.ImageFormat;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -15,6 +16,7 @@ import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Range;
@@ -25,10 +27,18 @@ import android.view.TextureView;
 import com.aniljing.mediacodecuse.utils.LogUtils;
 import com.aniljing.mediacodecuse.utils.MediaUtil;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
+
+import static com.aniljing.mediacodecuse.camera2.CameraUtil.COLOR_FormatI420;
+import static com.aniljing.mediacodecuse.camera2.CameraUtil.COLOR_FormatNV21;
 
 /**
  * @ClassName Camera2ProviderPreviewWithYUV
@@ -50,12 +60,14 @@ public class Camera2ProviderPreviewWithYUV {
     private Size mPreviewSize;
     private final Point previewViewSize;
     private Range<Integer> fpsRanges;
+    private byte[] i420;
     private byte[] nv21;
-    private byte[] nv21_rotated;
+    private byte[] dst_rotated;
     private byte[] nv12;
     private YUVDataCallBack mYUVDataCallBack;
     private int orientation;
-    private MediaUtil mMediaUtil;
+    private final MediaUtil mMediaUtil;
+    private int frameIndex = 0;
 
     public Camera2ProviderPreviewWithYUV(Activity mContext) {
         this.mContext = mContext;
@@ -169,10 +181,6 @@ public class Camera2ProviderPreviewWithYUV {
     };
 
     private final ImageReader.OnImageAvailableListener mOnImageAvailableListener = new ImageReader.OnImageAvailableListener() {
-        private byte[] y;
-        private byte[] u;
-        private byte[] v;
-        private ReentrantLock lock = new ReentrantLock();
 
         @SuppressLint("LongLogTag")
         @Override
@@ -180,45 +188,39 @@ public class Camera2ProviderPreviewWithYUV {
             Image image = reader.acquireNextImage();
             // Y:U:V == 4:2:2
             if (mYUVDataCallBack != null && image.getFormat() == ImageFormat.YUV_420_888) {
-                Image.Plane[] planes = image.getPlanes();
-                // 加锁确保y、u、v来源于同一个Image
-                lock.lock();
-                // 重复使用同一批byte数组，减少gc频率
-                if (y == null) {
-                    y = new byte[planes[0].getBuffer().limit() - planes[0].getBuffer().position()];
-                    u = new byte[planes[1].getBuffer().limit() - planes[1].getBuffer().position()];
-                    v = new byte[planes[2].getBuffer().limit() - planes[2].getBuffer().position()];
+                Rect crop = image.getCropRect();
+                int format = image.getFormat();
+                int width = crop.width();
+                int height = crop.height();
+                if (nv21 == null) {
+                    i420 = new byte[width * height * ImageFormat.getBitsPerPixel(format) / 8];
+                    nv21 = new byte[width * height * ImageFormat.getBitsPerPixel(format) / 8];
+                    dst_rotated = new byte[nv21.length];
+                    nv12 = new byte[nv21.length];
                 }
-                if (image.getPlanes()[0].getBuffer().remaining() == y.length) {
-                    planes[0].getBuffer().get(y);
-                    planes[1].getBuffer().get(u);
-                    planes[2].getBuffer().get(v);
-                    if (nv21 == null) {
-                        nv21 = new byte[planes[0].getRowStride() * mPreviewSize.getHeight() * 3 / 2];
-                    }
-                    // 回传数据是YUV422
-                    if (y.length / u.length == 2) {
-                        yuv422ToYuv420sp(y, u, v, nv21, planes[0].getRowStride(), mPreviewSize.getHeight());
-                    }
-                    // 回传数据是YUV420
-                    else if (y.length / u.length == 4) {
-                        yuv420ToYuv420sp(y, u, v, nv21, planes[0].getRowStride(), mPreviewSize.getHeight());
-                    }
-//                    byte[] i420=new byte[nv21.length];
-                    nv21_rotated=new byte[nv21.length];
-                    nv12=new byte[nv21.length];
-                    nv21_rotate_to_90(nv21,nv21_rotated, mPreviewSize.getHeight(),planes[0].getRowStride());
-//                    mMediaUtil.nv21ToI420(nv21,planes[0].getRowStride(), mPreviewSize.getHeight(), i420);
-//                    mMediaUtil.i420Rotate(i420,planes[0].getRowStride(), mPreviewSize.getHeight(), nv21_rotated,orientation);
-                    nv21toNV12(nv21_rotated,nv12);
-                    if (mYUVDataCallBack != null) {
-                        mYUVDataCallBack.yuvData(nv12, planes[0].getRowStride(), mPreviewSize.getHeight(), orientation);
-                    }
-                }
-                lock.unlock();
-            }
-            image.close();
 
+//                i420 = getI420DataByOnePlane(image,COLOR_FormatI420);
+                i420 = getI420(image);
+                saveI420Yuv(i420);
+                if (orientation == 90) {
+                    LogUtils.e(TAG, "rotate");
+                    mMediaUtil.i420Rotate(i420, width, height, dst_rotated, orientation);
+                    saveI420RotateYuv(dst_rotated);
+                    mMediaUtil.i420ToNv21(dst_rotated, height, width, nv21);
+                    saveNv21Yuv(nv21);
+                } else {
+                    LogUtils.e(TAG, "no rotate");
+                    mMediaUtil.i420ToNv21(i420, width, height, nv21);
+                }
+                nv12 = new byte[nv21.length];
+                nv21toNV12(nv21, nv12);
+                saveNv12Yuv(nv12);
+                if (mYUVDataCallBack != null) {
+                    mYUVDataCallBack.yuvData(nv12, width, height, orientation);
+                }
+            }
+            frameIndex++;
+            image.close();
         }
     };
 
@@ -326,6 +328,7 @@ public class Camera2ProviderPreviewWithYUV {
         }
     }
 
+
     private void yuvToNv21(byte[] y, byte[] u, byte[] v, byte[] nv21, int stride, int height) {
         System.arraycopy(y, 0, nv21, 0, y.length);
         // 注意，若length值为 y.length * 3 / 2 会有数组越界的风险，需使用真实数据长度计算
@@ -431,5 +434,285 @@ public class Camera2ProviderPreviewWithYUV {
             }
         }
         return bestSize;
+    }
+
+    private byte[] getI420DataByOnePlane(Image image, int colorFormat) {
+        if (colorFormat != COLOR_FormatI420 && colorFormat != COLOR_FormatNV21) {
+            throw new IllegalArgumentException("only support COLOR_FormatI420 " + "and COLOR_FormatNV21");
+        }
+        try {
+            Rect crop = image.getCropRect();
+            int format = image.getFormat();
+            int width = crop.width();
+            int height = crop.height();
+            Image.Plane[] planes = image.getPlanes();
+            byte[] data = new byte[width * height * ImageFormat.getBitsPerPixel(format) / 8];
+            byte[] rowData = new byte[planes[0].getRowStride()];
+            int channelOffset = 0;
+            int outputStride = 1;
+            for (int i = 0; i < planes.length; i++) {
+                switch (i) {
+                    case 0:
+                        channelOffset = 0;
+                        outputStride = 1;
+                        break;
+                    case 1:
+                        if (colorFormat == COLOR_FormatI420) {
+                            channelOffset = width * height;
+                            outputStride = 1;
+                        } else if (colorFormat == COLOR_FormatNV21) {
+                            channelOffset = width * height + 1;
+                            outputStride = 2;
+                        }
+                        break;
+                    case 2:
+                        if (colorFormat == COLOR_FormatI420) {
+                            channelOffset = (int) (width * height * 1.25);
+                            outputStride = 1;
+                        } else if (colorFormat == COLOR_FormatNV21) {
+                            channelOffset = width * height;
+                            outputStride = 2;
+                        }
+                        break;
+                    default:
+                }
+                ByteBuffer buffer = planes[i].getBuffer();
+                int rowStride = planes[i].getRowStride();
+                int pixelStride = planes[i].getPixelStride();
+                int shift = (i == 0) ? 0 : 1;
+                int w = width >> shift;
+                int h = height >> shift;
+                buffer.position(rowStride * (crop.top >> shift) + pixelStride * (crop.left >> shift));
+                for (int row = 0; row < h; row++) {
+                    int length;
+                    if (pixelStride == 1 && outputStride == 1) {
+                        length = w;
+                        buffer.get(data, channelOffset, length);
+                        channelOffset += length;
+                    } else {
+                        length = (w - 1) * pixelStride + 1;
+                        buffer.get(rowData, 0, length);
+                        for (int col = 0; col < w; col++) {
+                            data[channelOffset] = rowData[col * pixelStride];
+                            channelOffset += outputStride;
+                        }
+                    }
+                    if (row < h - 1) {
+                        buffer.position(buffer.position() + rowStride - length);
+                    }
+                }
+            }
+            return data;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private byte[] getI420DataByTwoPlane(Image image) {
+        MediaUtil mediaUtil = new MediaUtil();
+        ReentrantLock lock = new ReentrantLock();
+        if (image.getFormat() == ImageFormat.YUV_420_888) {
+            Image.Plane[] planes = image.getPlanes();
+            // 加锁确保y、u、v来源于同一个Image
+            lock.lock();
+            Rect crop = image.getCropRect();
+            int format = image.getFormat();
+            int width = crop.width();
+            int height = crop.height();
+            byte[] y = new byte[planes[0].getBuffer().limit() - planes[0].getBuffer().position()];
+            byte[] u = new byte[planes[1].getBuffer().limit() - planes[1].getBuffer().position()];
+            byte[] v = new byte[planes[2].getBuffer().limit() - planes[2].getBuffer().position()];
+            byte[] nv21 = new byte[width * height * ImageFormat.getBitsPerPixel(format) / 8];
+            byte[] i420 = new byte[nv21.length];
+            if (image.getPlanes()[0].getBuffer().remaining() == y.length) {
+                planes[0].getBuffer().get(y);
+                planes[1].getBuffer().get(u);
+                planes[2].getBuffer().get(v);
+            }
+            yuv422ToYuv420sp(y, u, v, nv21, width, height);
+            mediaUtil.nv21ToI420(nv21, width, height, i420);
+            return i420;
+        }
+        return null;
+    }
+
+    private byte[] getI420(Image image) {
+        try {
+            int w = image.getWidth(), h = image.getHeight();
+            // size是宽乘高的1.5倍 可以通过ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888)得到
+            int i420Size = w * h * 3 / 2;
+
+            Image.Plane[] planes = image.getPlanes();
+            //remaining0 = rowStride*(h-1)+w => 27632= 192*143+176 Y分量byte数组的size
+            int remaining0 = planes[0].getBuffer().remaining();
+            int remaining1 = planes[1].getBuffer().remaining();
+            //remaining2 = rowStride*(h/2-1)+w-1 =>  13807=  192*71+176-1 V分量byte数组的size
+            int remaining2 = planes[2].getBuffer().remaining();
+            //获取pixelStride，可能跟width相等，可能不相等
+            int pixelStride = planes[2].getPixelStride();
+            int rowOffest = planes[2].getRowStride();
+            byte[] nv21 = new byte[i420Size];
+            //分别准备三个数组接收YUV分量。
+            byte[] yRawSrcBytes = new byte[remaining0];
+            byte[] uRawSrcBytes = new byte[remaining1];
+            byte[] vRawSrcBytes = new byte[remaining2];
+            planes[0].getBuffer().get(yRawSrcBytes);
+            planes[1].getBuffer().get(uRawSrcBytes);
+            planes[2].getBuffer().get(vRawSrcBytes);
+            if (pixelStride == image.getWidth()) {
+                //两者相等，说明每个YUV块紧密相连，可以直接拷贝
+                System.arraycopy(yRawSrcBytes, 0, nv21, 0, rowOffest * h);
+                System.arraycopy(vRawSrcBytes, 0, nv21, rowOffest * h, rowOffest * h / 2 - 1);
+            } else {
+                //根据每个分量的size先生成byte数组
+                byte[] ySrcBytes = new byte[w * h];
+                byte[] uSrcBytes = new byte[w * h / 2 - 1];
+                byte[] vSrcBytes = new byte[w * h / 2 - 1];
+                for (int row = 0; row < h; row++) {
+                    //源数组每隔 rowOffest 个bytes 拷贝 w 个bytes到目标数组
+                    System.arraycopy(yRawSrcBytes, rowOffest * row, ySrcBytes, w * row, w);
+                    //y执行两次，uv执行一次
+                    if (row % 2 == 0) {
+                        //最后一行需要减一
+                        if (row == h - 2) {
+                            System.arraycopy(vRawSrcBytes, rowOffest * row / 2, vSrcBytes, w * row / 2, w - 1);
+                        } else {
+                            System.arraycopy(vRawSrcBytes, rowOffest * row / 2, vSrcBytes, w * row / 2, w);
+                        }
+                    }
+                }
+                //yuv拷贝到一个数组里面
+                System.arraycopy(ySrcBytes, 0, nv21, 0, w * h);
+                System.arraycopy(vSrcBytes, 0, nv21, w * h, w * h / 2 - 1);
+                byte[] i420 = new byte[nv21.length];
+                MediaUtil mediaUtil = new MediaUtil();
+                mediaUtil.nv21ToI420(nv21, w, h, i420);
+                return i420;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private void saveYuvData(byte[] y, byte[] u, byte[] v) {
+        FileOutputStream fosY = null, fosU = null, fosV = null;
+        if (frameIndex == 50) {
+            byte[] copyY = new byte[y.length];
+            byte[] copyU = new byte[u.length];
+            byte[] copyV = new byte[v.length];
+            System.arraycopy(y, 0, copyY, 0, y.length);
+            System.arraycopy(u, 0, copyU, 0, u.length);
+            System.arraycopy(v, 0, copyV, 0, v.length);
+            try {
+                File fileY = new File(Environment.getExternalStorageDirectory(), "y.yuv");
+                fosY = new FileOutputStream(fileY);
+                fosY.write(copyY);
+                File fileU = new File(Environment.getExternalStorageDirectory(), "u.yuv");
+                fosU = new FileOutputStream(fileU);
+                fosU.write(copyU);
+                File fileV = new File(Environment.getExternalStorageDirectory(), "v.yuv");
+                fosV = new FileOutputStream(fileV);
+                fosV.write(copyV);
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            } finally {
+                if (fosY != null) {
+                    try {
+                        fosY.flush();
+                        fosY.close();
+                        fosY = null;
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                if (fosU != null) {
+                    try {
+                        fosU.flush();
+                        fosU.close();
+                        fosU = null;
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                if (fosV != null) {
+                    try {
+                        fosV.flush();
+                        fosV.close();
+                        fosV = null;
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+        }
+    }
+
+    private void saveI420Yuv(byte[] i420) {
+        if (frameIndex == 50) {
+            File fileI420 = new File(Environment.getExternalStorageDirectory(), "i420.yuv");
+            try {
+                FileOutputStream fos = new FileOutputStream(fileI420);
+                fos.write(i420);
+                fos.flush();
+                fos.close();
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private void saveI420RotateYuv(byte[] i420Rotate) {
+        if (frameIndex == 50) {
+            File fileI420 = new File(Environment.getExternalStorageDirectory(), "i420Rotate.yuv");
+            try {
+                FileOutputStream fos = new FileOutputStream(fileI420);
+                fos.write(i420Rotate);
+                fos.flush();
+                fos.close();
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private void saveNv21Yuv(byte[] nv21) {
+        if (frameIndex == 50) {
+            File fileI420 = new File(Environment.getExternalStorageDirectory(), "nv21.yuv");
+            try {
+                FileOutputStream fos = new FileOutputStream(fileI420);
+                fos.write(nv21);
+                fos.flush();
+                fos.close();
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private void saveNv12Yuv(byte[] nv12) {
+        if (frameIndex == 50) {
+            File fileI420 = new File(Environment.getExternalStorageDirectory(), "nv12.yuv");
+            try {
+                FileOutputStream fos = new FileOutputStream(fileI420);
+                fos.write(nv12);
+                fos.flush();
+                fos.close();
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }

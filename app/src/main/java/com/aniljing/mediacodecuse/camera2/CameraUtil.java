@@ -23,7 +23,7 @@ public class CameraUtil {
         return false;
     }
 
-    public static void getDataFromImage(Image image, int colorFormat, Camera2ProviderPreviewWithYUV.YUVDataCallBack callBack) {
+    private void getDataFromImage(Image image, int colorFormat, Camera2ProviderPreviewWithYUV.YUVDataCallBack callBack) {
         if (colorFormat != COLOR_FormatI420 && colorFormat != COLOR_FormatNV21) {
             throw new IllegalArgumentException("only support COLOR_FormatI420 " + "and COLOR_FormatNV21");
         }
@@ -93,7 +93,7 @@ public class CameraUtil {
                 }
             }
             if (callBack != null) {
-                callBack.yuvData(data, image.getWidth(), image.getHeight(),0);
+                callBack.yuvData(data, image.getWidth(), image.getHeight(), 0);
             }
             image.close();
         } catch (Exception e) {

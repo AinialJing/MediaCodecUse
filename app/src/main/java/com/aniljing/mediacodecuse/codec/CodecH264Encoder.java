@@ -4,14 +4,9 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.os.Bundle;
-import android.os.Environment;
 
 import com.aniljing.mediacodecuse.utils.LogUtils;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -26,21 +21,19 @@ public class CodecH264Encoder {
     private long m_nCount = 0;
     private long timeStamp = 0;
     private boolean startEncode = false;
-    private boolean keyFrame = false;
-
 
     public void initCodec(EncodeCallBack callBack, int width, int height, int orientation) {
         try {
             mCallBack = callBack;
             timeStamp = 0;
             mMediaCodecVideo = MediaCodec.createEncoderByType("video/avc");
-            MediaFormat mediaFormatVideo = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, orientation == 90 ? height : width, orientation == 90 ? width : height);
-            mediaFormatVideo.setInteger(MediaFormat.KEY_BIT_RATE, width*height*3);
-            mediaFormatVideo.setInteger(MediaFormat.KEY_FRAME_RATE, 15);
-            mediaFormatVideo.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
-            mediaFormatVideo.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible);
-            mediaFormatVideo.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
-            mMediaCodecVideo.configure(mediaFormatVideo, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
+            MediaFormat mediaEncodeFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, orientation == 90 ? height : width, orientation == 90 ? width : height);
+            mediaEncodeFormat.setInteger(MediaFormat.KEY_BIT_RATE, width*height*5);
+            mediaEncodeFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 25);
+            mediaEncodeFormat.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
+            mediaEncodeFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible);
+            mediaEncodeFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
+            mMediaCodecVideo.configure(mediaEncodeFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
             mMediaCodecVideo.start();
         } catch (IOException e) {
             LogUtils.e(TAG, e.toString());
@@ -83,7 +76,6 @@ public class CodecH264Encoder {
                     //dsp 芯片触发I帧
                     mMediaCodecVideo.setParameters(params);
                     timeStamp = System.currentTimeMillis();
-                    keyFrame = true;
                 }
                 int outputIndex = mMediaCodecVideo.dequeueOutputBuffer(bufferInfo, 4000);
                 if (outputIndex >= 0) {
