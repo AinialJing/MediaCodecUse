@@ -62,11 +62,8 @@ public class Camera2ProviderPreviewWithYUV {
     private Range<Integer> fpsRanges;
     private byte[] i420;
     private byte[] nv21;
-    private byte[] dst_rotated;
-    private byte[] nv12;
     private YUVDataCallBack mYUVDataCallBack;
     private int orientation;
-    private final MediaUtil mMediaUtil;
     private int frameIndex = 0;
 
     public Camera2ProviderPreviewWithYUV(Activity mContext) {
@@ -77,7 +74,6 @@ public class Camera2ProviderPreviewWithYUV {
         previewViewSize = new Point();
         previewViewSize.x = 640;
         previewViewSize.y = 480;
-        mMediaUtil = new MediaUtil();
     }
 
     public void initTexture(TextureView textureView) {
@@ -195,8 +191,8 @@ public class Camera2ProviderPreviewWithYUV {
                 if (nv21 == null) {
                     i420 = new byte[width * height * ImageFormat.getBitsPerPixel(format) / 8];
                     nv21 = new byte[width * height * ImageFormat.getBitsPerPixel(format) / 8];
-                    dst_rotated = new byte[nv21.length];
-                    nv12 = new byte[nv21.length];
+                    byte[] dst_rotated = new byte[nv21.length];
+                    byte[] nv12 = new byte[nv21.length];
                 }
 
 //                i420 = getI420DataByOnePlane(image,COLOR_FormatI420);
