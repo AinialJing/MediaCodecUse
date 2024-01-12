@@ -201,22 +201,22 @@ public class Camera2ProviderPreviewWithYUV {
 
 //                i420 = getI420DataByOnePlane(image,COLOR_FormatI420);
                 i420 = getI420(image);
-                saveI420Yuv(i420);
-                if (orientation == 90) {
-                    LogUtils.e(TAG, "rotate");
-                    mMediaUtil.i420Rotate(i420, width, height, dst_rotated, orientation);
-                    saveI420RotateYuv(dst_rotated);
-                    mMediaUtil.i420ToNv21(dst_rotated, height, width, nv21);
-                    saveNv21Yuv(nv21);
-                } else {
-                    LogUtils.e(TAG, "no rotate");
-                    mMediaUtil.i420ToNv21(i420, width, height, nv21);
-                }
-                nv12 = new byte[nv21.length];
-                nv21toNV12(nv21, nv12);
-                saveNv12Yuv(nv12);
+//                saveI420Yuv(i420);
+//                if (orientation == 90) {
+//                    LogUtils.e(TAG, "rotate");
+//                    mMediaUtil.i420Rotate(i420, width, height, dst_rotated, orientation);
+//                    saveI420RotateYuv(dst_rotated);
+//                    mMediaUtil.i420ToNv21(dst_rotated, height, width, nv21);
+//                    saveNv21Yuv(nv21);
+//                } else {
+//                    LogUtils.e(TAG, "no rotate");
+//                    mMediaUtil.i420ToNv21(i420, width, height, nv21);
+//                }
+//                nv12 = new byte[nv21.length];
+//                nv21toNV12(nv21, nv12);
+//                saveNv12Yuv(nv12);
                 if (mYUVDataCallBack != null) {
-                    mYUVDataCallBack.yuvData(nv12, width, height, orientation);
+                    mYUVDataCallBack.yuvData(i420, width, height, orientation);
                 }
             }
             frameIndex++;

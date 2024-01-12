@@ -24,8 +24,9 @@ public class CodecH264Decoder {
     public void initDecoder(Surface surface,int width,int height) {
         try {
             decoder = MediaCodec.createDecoderByType("video/avc");
-            MediaFormat mediaEncodeFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height);
-            decoder.configure(mediaEncodeFormat, surface, null, 0);
+            MediaFormat mediaDecodeFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height);
+            mediaDecodeFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
+            decoder.configure(mediaDecodeFormat, surface, null, 0);
             thread = new HandlerThread("videoCodec");
             thread.start();
             mHandler = new Handler(thread.getLooper());

@@ -3,6 +3,8 @@ package com.aniljing.mediacodecuse.camera2;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.media.Image;
+import android.media.MediaCodecInfo;
+import android.media.MediaCodecList;
 
 import java.nio.ByteBuffer;
 
@@ -111,6 +113,50 @@ public class CameraUtil {
             nv21[i + 1] = u[uIndex];
             vIndex += 2;
             uIndex += 2;
+        }
+    }
+
+    public static MediaCodecInfo selectCodec(String mimeType) {
+        int numCodecs = MediaCodecList.getCodecCount();
+        for (int i = 0; i < numCodecs; i++) {
+            MediaCodecInfo codecInfo = MediaCodecList.getCodecInfoAt(i);
+            if (!codecInfo.isEncoder()) {
+                continue;
+            }
+            String[] types = codecInfo.getSupportedTypes();
+            for (int j = 0; j < types.length; j++) {
+                if (types[j].equalsIgnoreCase(mimeType)) {
+                    return codecInfo;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static int selectColorFormat(MediaCodecInfo codecInfo,
+                                         String mimeType) {
+        MediaCodecInfo.CodecCapabilities capabilities = codecInfo
+                .getCapabilitiesForType(mimeType);
+        for (int i = 0; i < capabilities.colorFormats.length; i++) {
+            int colorFormat = capabilities.colorFormats[i];
+            if (isRecognizedFormat(colorFormat)) {
+                return colorFormat;
+            }
+        }
+        return 0; // not reached
+    }
+
+    private static boolean isRecognizedFormat(int colorFormat) {
+        switch (colorFormat) {
+            // these are the formats we know how to handle for
+            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar:
+            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedPlanar:
+            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar:
+            case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420PackedSemiPlanar:
+            case MediaCodecInfo.CodecCapabilities.COLOR_TI_FormatYUV420PackedSemiPlanar:
+                return true;
+            default:
+                return false;
         }
     }
 

@@ -5,6 +5,7 @@ import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.os.Bundle;
 
+import com.aniljing.mediacodecuse.camera2.CameraUtil;
 import com.aniljing.mediacodecuse.utils.LogUtils;
 
 import java.io.IOException;
@@ -27,6 +28,8 @@ public class CodecH264Encoder {
             mCallBack = callBack;
             timeStamp = 0;
             mMediaCodecVideo = MediaCodec.createEncoderByType("video/avc");
+            MediaCodecInfo mediaCodecInfo = CameraUtil.selectCodec(MediaFormat.MIMETYPE_VIDEO_AVC);
+            LogUtils.e(TAG,mediaCodecInfo.getName());
             MediaFormat mediaEncodeFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, orientation == 90 ? height : width, orientation == 90 ? width : height);
             mediaEncodeFormat.setInteger(MediaFormat.KEY_BIT_RATE, width*height*5);
             mediaEncodeFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 25);
@@ -39,6 +42,10 @@ public class CodecH264Encoder {
             LogUtils.e(TAG, e.toString());
             throw new RuntimeException(e);
         }
+    }
+
+    public MediaCodec getMediaCodecVideo() {
+        return mMediaCodecVideo;
     }
 
     public void startEncode() {
