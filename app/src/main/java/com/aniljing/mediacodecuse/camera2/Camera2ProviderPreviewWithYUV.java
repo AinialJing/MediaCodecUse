@@ -72,8 +72,8 @@ public class Camera2ProviderPreviewWithYUV {
         handlerThread.start();
         mCameraHandler = new Handler(handlerThread.getLooper());
         previewViewSize = new Point();
-        previewViewSize.x = 640;
-        previewViewSize.y = 480;
+        previewViewSize.x = 1280;
+        previewViewSize.y = 720;
     }
 
     public void initTexture(TextureView textureView) {

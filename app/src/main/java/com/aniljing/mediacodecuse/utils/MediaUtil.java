@@ -19,6 +19,8 @@ public class MediaUtil {
 
     public native boolean initEncode(int width, int height, int bite);
 
+    public native void unEncode();
+
     public native void encode(byte[] data);
 
     public native boolean initDecode(int width, int height);

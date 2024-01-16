@@ -11,9 +11,9 @@ extern "C" {
 #include <libavcodec/codec.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/opt.h>
-AVCodecContext *contextEncode = NULL;
-AVCodecContext *contextDecode = NULL;
-AVCodec *avCodecEncode = NULL, *avCodecDecode = NULL;
+AVCodecContext *contextEncode = nullptr;
+AVCodecContext *contextDecode = nullptr;
+AVCodec *avCodecEncode = nullptr, *avCodecDecode = nullptr;
 AVPacket *pkt;
 AVFrame *avFrame;
 
@@ -125,6 +125,13 @@ Java_com_aniljing_mediacodecuse_utils_MediaUtil_initEncode(JNIEnv *env, jobject 
     }
     return true;
 }
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_aniljing_mediacodecuse_utils_MediaUtil_unEncode(JNIEnv *env, jobject thiz) {
+
+}
+
 JNIEXPORT void JNICALL
 Java_com_aniljing_mediacodecuse_utils_MediaUtil_encode(JNIEnv *env, jobject thiz, jbyteArray data) {
     pkt = av_packet_alloc();
