@@ -27,11 +27,13 @@ public:
 
     ~X264Handle();
 
-    int init(int width, int height, int fps, int bitrate);
+    int initEncode(int width, int height, int fps, int bitrate);
 
     void setEncodeCallBack(EncodeCallBack callBack);
 
     void x264Encode(int8_t *data);
+
+    void x264Decode(int8_t *data);
 };
 
 

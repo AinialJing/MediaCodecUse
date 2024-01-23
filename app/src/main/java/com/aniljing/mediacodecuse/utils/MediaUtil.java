@@ -18,11 +18,17 @@ public class MediaUtil {
     public native void i420Scale(byte[] src_i420_data, int width, int height, byte[] dst_i420_data, int dst_width, int dst_height, int filter_mode);
 
 
-    public native int initX264(int width, int height);
+    public native int initX264Encode(int width, int height);
 
-    public native int x264Encode(byte[] src_data);
+    public native void x264Encode(byte[] src_data);
 
     public native void releaseX264();
+
+    public native int intFFMpegDecode(int width,int height);
+
+    public native void ffmpegDecode(byte[] src_data);
+
+    public native void releaseFFMpegDecode();
 
     public void x264EncodeCallBack(byte[] x264) {
         if (mEncodeCallBack != null) {

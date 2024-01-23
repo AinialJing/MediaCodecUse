@@ -11,10 +11,10 @@
         android:layout_width="100dp"
         android:layout_height="60dp"
         android:onClick="goToMediaCodec"
-        android:text="硬编码"/>
+        android:text="硬编解码"/>
     <androidx.appcompat.widget.AppCompatButton
         android:layout_width="100dp"
         android:layout_height="60dp"
         android:onClick="goToX264Codec"
-        android:text="软编码"/>
+        android:text="软编解码"/>
 </LinearLayout>

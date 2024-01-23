@@ -5,10 +5,12 @@
 #include "X264Handle.h"
 #include <fstream>
 
+using namespace std;
+
+
 X264Handle::X264Handle() : m_frameLen(0),
                            videoCodec(nullptr),
                            pic_in(nullptr) {
-
 }
 
 X264Handle::~X264Handle() {
@@ -23,7 +25,7 @@ X264Handle::~X264Handle() {
     }
 }
 
-int X264Handle::init(int width, int height, int fps, int bitrate) {
+int X264Handle::initEncode(int width, int height, int fps, int bitrate) {
     LOGE("init encode:width=%d,height=%d,fps=%d,bitrate=%d", width, height, fps, bitrate);
     std::lock_guard<std::mutex> l(m_mutex);
     m_frameLen = width * height;
@@ -103,20 +105,31 @@ void X264Handle::x264Encode(int8_t *data) {
     offset += m_frameLen / 4;
     memcpy(pic_in->img.plane[2], data + offset, (size_t) m_frameLen / 4); // v
     x264_nal_t *pp_nal;
-    LOGE("encode %d", __LINE__);
     int pi_nal;
     x264_picture_t pic_out;
-    LOGE("encode %d", __LINE__);
     int ret = x264_encoder_encode(videoCodec, &pp_nal, &pi_nal, pic_in, &pic_out);
     if (ret >= 0) {
         if (ret > 0) {
-            LOGD("encode finished,encode len:%d", ret);
-            // 编码成功，获取编码后的数据
-            const uint8_t *encodedData = pp_nal[0].p_payload;
-            int dataSize = pp_nal[0].i_payload;
-
-            if (m_encodeCallBack != nullptr) {
-                m_encodeCallBack(encodedData, dataSize);
+            LOGD("encode finished,encode len:%d,nal size:%d", ret, pi_nal);
+            for (int i = 0; i < pi_nal; ++i) {
+                x264_nal_t nal = pp_nal[i];
+                if (nal.i_type == NAL_SPS) {
+                    LOGE("sps");
+                    if (m_encodeCallBack != nullptr) {
+                        m_encodeCallBack(nal.p_payload, nal.i_payload);
+                    }
+                } else if (nal.i_type == NAL_PPS) {
+                    LOGE("pps");
+                    if (m_encodeCallBack != nullptr) {
+                        m_encodeCallBack(nal.p_payload, nal.i_payload);
+                    }
+                } else {
+                    LOGE("slice");
+                    // 编码成功，获取编码后的数据
+                    if (m_encodeCallBack != nullptr) {
+                        m_encodeCallBack(nal.p_payload, nal.i_payload);
+                    }
+                }
             }
         } else {
             LOGD("encode finished,but not data");
@@ -124,5 +137,9 @@ void X264Handle::x264Encode(int8_t *data) {
     } else {
         LOGE("encode error");
     }
+
+}
+
+void X264Handle::x264Decode(int8_t *data) {
 
 }
