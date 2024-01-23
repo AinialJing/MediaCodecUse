@@ -32,9 +32,6 @@
         <activity
             android:name=".MediaCodecEncoderActivity"
             android:exported="false" />
-        <activity
-            android:name=".X264CodecActivity"
-            android:exported="false" />
     </application>
 
 </manifest>

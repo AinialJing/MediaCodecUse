@@ -38,7 +38,4 @@ public class MainActivity extends AppCompatActivity {
         startActivity(new Intent(mContext, MediaCodecEncoderActivity.class));
     }
 
-    public void goToX264Codec(View view) {
-        startActivity(new Intent(mContext, X264CodecActivity.class));
-    }
 }

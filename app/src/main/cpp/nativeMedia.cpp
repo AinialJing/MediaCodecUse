@@ -6,16 +6,8 @@
 #include <string>
 #include "Log.h"
 #include "YuvUtil.h"
-#include "X264Handle.h"
-
-JavaVM *gJavaVM;
-jclass mObjectClass = NULL;
-static jmethodID jniEncodeCallBackId = nullptr;
-
-void jniEncodeCallBack(const uint8_t *data, int dataSize);
 
 extern "C" {
-X264Handle *x264Handle = nullptr;
 
 
 extern "C"
@@ -102,73 +94,5 @@ Java_com_aniljing_mediacodecuse_utils_MediaUtil_i420Scale(JNIEnv *env, jobject t
     env->ReleaseByteArrayElements(dst_i420_array, dst_i420_data, 0);
 }
 
-extern "C"
-JNIEXPORT jint JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_initX264Encode(JNIEnv *env, jobject thiz,
-                                                               jint width,
-                                                               jint height) {
-    env->GetJavaVM(&gJavaVM);
-    mObjectClass = (jclass) env->NewGlobalRef((jobject) env->GetObjectClass(thiz));
-    jniEncodeCallBackId = env->GetStaticMethodID(mObjectClass, "jniEncodeCallBack",
-                                                 "([B)V");
-    x264Handle = new X264Handle();
-    int ret = x264Handle->initEncode(width, height, 10, 800000);
-    x264Handle->setEncodeCallBack(jniEncodeCallBack);
-    LOGE("x264 init finished");
-    return ret;
-}
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_x264Encode(JNIEnv *env, jobject thiz,
-                                                           jbyteArray src_data) {
-    LOGE("x264Encode start");
-    if (!x264Handle) {
-        LOGE("x264Handle is null");
-        return;
-    }
-    jbyte *data = env->GetByteArrayElements(src_data, JNI_FALSE);
-    x264Handle->x264Encode(data);
-    env->ReleaseByteArrayElements(src_data, data, 0);
 }
 
-
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_releaseX264(JNIEnv *env, jobject thiz) {
-    delete x264Handle;
-    x264Handle = nullptr;
-}
-
-extern "C"
-JNIEXPORT jint JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_intFFMpegDecode(JNIEnv *env, jobject thiz,
-                                                                jint width, jint height) {
-
-
-}
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_ffmpegDecode(JNIEnv *env, jobject thiz,
-                                                             jbyteArray src_data) {
-
-}
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_releaseFFMpegDecode(JNIEnv *env, jobject thiz) {
-
-}
-
-}
-
-void jniEncodeCallBack(const uint8_t *data, int len) {
-    LOGD("x264 encode callBack size:%d", len);
-    JNIEnv *env;
-    //从全局的JavaVM中获取到环境变量
-    gJavaVM->AttachCurrentThread(&env, NULL);
-    jbyteArray jbarray = env->NewByteArray(len);
-    jbyte *jy = reinterpret_cast<jbyte *>(const_cast<uint8_t *>(data));
-    env->SetByteArrayRegion(jbarray, 0, len, jy);
-    env->CallStaticVoidMethod(mObjectClass, jniEncodeCallBackId, jbarray);
-    env->DeleteLocalRef(jbarray);
-//    gJavaVM->DetachCurrentThread();
-}
