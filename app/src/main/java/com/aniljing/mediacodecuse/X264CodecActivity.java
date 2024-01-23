@@ -54,7 +54,7 @@ public class X264CodecActivity extends AppCompatActivity {
     private MediaUtil mMediaUtil;
     private LinkedBlockingDeque<byte[]> dataQu = new LinkedBlockingDeque<>();
     private boolean startEncode = false;
-    private File mFile = new File(Environment.getExternalStorageDirectory(), "x264.h264");
+    private File mFile = new File(Environment.getExternalStorageDirectory(), "x264.264");
     private BufferedOutputStream bos;
 
     @Override
