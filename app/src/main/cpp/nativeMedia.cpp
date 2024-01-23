@@ -6,16 +6,12 @@
 #include <string>
 #include "Log.h"
 #include "YuvUtil.h"
+#include "X264Handle.h"
+
+void jniEncodeCallBack(const uint8_t *data, int dataSize);
 
 extern "C" {
-#include <libavcodec/codec.h>
-#include <libavcodec/avcodec.h>
-#include <libavutil/opt.h>
-AVCodecContext *contextEncode = nullptr;
-AVCodecContext *contextDecode = nullptr;
-AVCodec *avCodecEncode = nullptr, *avCodecDecode = nullptr;
-AVPacket *pkt;
-AVFrame *avFrame;
+X264Handle *x264Handle = nullptr;
 
 
 extern "C"
@@ -101,57 +97,43 @@ Java_com_aniljing_mediacodecuse_utils_MediaUtil_i420Scale(JNIEnv *env, jobject t
     env->ReleaseByteArrayElements(src_i420_array, src_i420_data, 0);
     env->ReleaseByteArrayElements(dst_i420_array, dst_i420_data, 0);
 }
-JNIEXPORT jboolean JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_initEncode(JNIEnv *env, jobject thiz, jint width,
-                                                           jint height, jint bit) {
-    avCodecEncode = avcodec_find_encoder(AV_CODEC_ID_H264);
-    contextEncode = avcodec_alloc_context3(avCodecEncode);
-    contextEncode->width = width;
-    contextEncode->height = height;
-    contextEncode->bit_rate = bit;
-    contextEncode->time_base = (AVRational) {1, 25};
-    contextEncode->framerate = (AVRational) {25, 1};
-    contextEncode->gop_size = 10;
-    contextEncode->max_b_frames = 1;
-    contextEncode->pix_fmt = AV_PIX_FMT_YUV420P;
-    if (avCodecEncode->id == AV_CODEC_ID_H264) {
-        av_opt_set(contextEncode->priv_data, "preset", "slow", 0);
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_aniljing_mediacodecuse_utils_MediaUtil_initX264(JNIEnv *env, jobject thiz, jint width,
+                                                         jint height) {
+    x264Handle = new X264Handle();
+    int ret = x264Handle->init(width, height, 10, 800000);
+    x264Handle->setEncodeCallBack(jniEncodeCallBack);
+    LOGE("x264 init finished");
+    return ret;
+}
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_aniljing_mediacodecuse_utils_MediaUtil_x264Encode(JNIEnv *env, jobject thiz,
+                                                           jbyteArray src_data) {
+    LOGE("x264Encode start");
+    if (!x264Handle) {
+        LOGE("x264Handle is null");
+        return -1;
     }
-    int ret = avcodec_open2(contextEncode, avCodecEncode, NULL);
-    if (ret < 0) {
-        LOGE("open codec failed");
-        avcodec_free_context(&contextEncode);
-        return false;
-    }
-    return true;
+    LOGE("jni %d", __LINE__);
+    jbyte *data = env->GetByteArrayElements(src_data, JNI_FALSE);
+    LOGE("jni %d", __LINE__);
+    x264Handle->x264Encode(data);
+    LOGE("jni %d", __LINE__);
+    env->ReleaseByteArrayElements(src_data, data, 0);
+    LOGE("jni %d", __LINE__);
 }
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_unEncode(JNIEnv *env, jobject thiz) {
-
+Java_com_aniljing_mediacodecuse_utils_MediaUtil_releaseX264(JNIEnv *env, jobject thiz) {
+    delete x264Handle;
+    x264Handle = nullptr;
 }
 
-JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_encode(JNIEnv *env, jobject thiz, jbyteArray data) {
-    pkt = av_packet_alloc();
-    avFrame = av_frame_alloc();
-    jbyte *bytes = env->GetByteArrayElements(data, 0);
-
-
 }
-
-extern "C"
-JNIEXPORT jboolean JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_initDecode(JNIEnv *env, jobject thiz, jint width,
-                                                           jint height) {
-
-
-}
-
-JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_decode(JNIEnv *env, jobject thiz, jbyteArray data) {
-
-
-}
+void jniEncodeCallBack(const uint8_t *data, int dataSize) {
+    LOGD("x264 encode callBack size:%d", dataSize);
 }

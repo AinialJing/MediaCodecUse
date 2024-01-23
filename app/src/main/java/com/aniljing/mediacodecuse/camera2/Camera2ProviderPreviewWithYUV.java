@@ -61,7 +61,6 @@ public class Camera2ProviderPreviewWithYUV {
     private final Point previewViewSize;
     private Range<Integer> fpsRanges;
     private byte[] i420;
-    private byte[] nv21;
     private YUVDataCallBack mYUVDataCallBack;
     private int orientation;
     private int frameIndex = 0;
@@ -72,8 +71,8 @@ public class Camera2ProviderPreviewWithYUV {
         handlerThread.start();
         mCameraHandler = new Handler(handlerThread.getLooper());
         previewViewSize = new Point();
-        previewViewSize.x = 1280;
-        previewViewSize.y = 720;
+        previewViewSize.x = 640;
+        previewViewSize.y = 480;
     }
 
     public void initTexture(TextureView textureView) {
@@ -188,29 +187,11 @@ public class Camera2ProviderPreviewWithYUV {
                 int format = image.getFormat();
                 int width = crop.width();
                 int height = crop.height();
-                if (nv21 == null) {
+                if (i420 == null) {
                     i420 = new byte[width * height * ImageFormat.getBitsPerPixel(format) / 8];
-                    nv21 = new byte[width * height * ImageFormat.getBitsPerPixel(format) / 8];
-                    byte[] dst_rotated = new byte[nv21.length];
-                    byte[] nv12 = new byte[nv21.length];
                 }
-
 //                i420 = getI420DataByOnePlane(image,COLOR_FormatI420);
                 i420 = getI420(image);
-//                saveI420Yuv(i420);
-//                if (orientation == 90) {
-//                    LogUtils.e(TAG, "rotate");
-//                    mMediaUtil.i420Rotate(i420, width, height, dst_rotated, orientation);
-//                    saveI420RotateYuv(dst_rotated);
-//                    mMediaUtil.i420ToNv21(dst_rotated, height, width, nv21);
-//                    saveNv21Yuv(nv21);
-//                } else {
-//                    LogUtils.e(TAG, "no rotate");
-//                    mMediaUtil.i420ToNv21(i420, width, height, nv21);
-//                }
-//                nv12 = new byte[nv21.length];
-//                nv21toNV12(nv21, nv12);
-//                saveNv12Yuv(nv12);
                 if (mYUVDataCallBack != null) {
                     mYUVDataCallBack.yuvData(i420, width, height, orientation);
                 }

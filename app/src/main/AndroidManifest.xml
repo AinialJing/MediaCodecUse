@@ -21,13 +21,20 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name="com.aniljing.mediacodecuse.MediaCodecEncoderActivity"
+            android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".MediaCodecEncoderActivity"
+            android:exported="false" />
+        <activity
+            android:name=".X264CodecActivity"
+            android:exported="false" />
     </application>
 
 </manifest>
