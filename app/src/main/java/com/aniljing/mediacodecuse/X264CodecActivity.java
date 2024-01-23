@@ -66,8 +66,8 @@ public class X264CodecActivity extends AppCompatActivity {
                     result = mMediaUtil.initX264(width, height);
                 }
                 startEncode = true;
-//                new Thread(new X264EncodeThread()).start();
-//                LogUtils.e(TAG, "initX264 state:" + result);
+                new Thread(new X264EncodeThread()).start();
+                LogUtils.e(TAG, "initX264 state:" + result);
                 addVideoData(width, height, orientation, data);
             } else {
                 addVideoData(width, height, orientation, data);
@@ -134,11 +134,8 @@ public class X264CodecActivity extends AppCompatActivity {
         if (orientation == 90 && mMediaUtil != null && dataQu != null) {
             byte[] rotate_data = new byte[data.length];
             mMediaUtil.i420Rotate(data, width, height, rotate_data, orientation);
-//            LogUtils.e(TAG, "add rotate_data video");
-//            dataQu.add(rotate_data);
-            if (mMediaUtil != null) {
-                mMediaUtil.x264Encode(rotate_data);
-            }
+            LogUtils.e(TAG, "add rotate_data video");
+            dataQu.add(rotate_data);
         } else {
             dataQu.add(data);
             LogUtils.e(TAG, "add video");
