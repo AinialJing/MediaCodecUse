@@ -2,7 +2,7 @@ package com.aniljing.mediacodecuse.utils;
 
 
 public class MediaUtil {
-    private EncodeCallBack mEncodeCallBack;
+    private static EncodeCallBack mEncodeCallBack;
     private DecodeCallback mDecodeCallback;
 
     public native void yv12ToI420(byte[] yv12, byte[] i420, int width, int height);
@@ -46,7 +46,7 @@ public class MediaUtil {
         void decodeData(byte[] decode);
     }
 
-    public void jniEncodeCallBack(byte[] data) {
+    public static void jniEncodeCallBack(byte[] data) {
         if (mEncodeCallBack != null) {
             mEncodeCallBack.encodeData(data);
         }

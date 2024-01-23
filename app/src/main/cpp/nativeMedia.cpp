@@ -8,6 +8,10 @@
 #include "YuvUtil.h"
 #include "X264Handle.h"
 
+JavaVM *gJavaVM;
+jclass mObjectClass = NULL;
+static jmethodID jniEncodeCallBackId = nullptr;
+
 void jniEncodeCallBack(const uint8_t *data, int dataSize);
 
 extern "C" {
@@ -102,6 +106,10 @@ extern "C"
 JNIEXPORT jint JNICALL
 Java_com_aniljing_mediacodecuse_utils_MediaUtil_initX264(JNIEnv *env, jobject thiz, jint width,
                                                          jint height) {
+    env->GetJavaVM(&gJavaVM);
+    mObjectClass = (jclass) env->NewGlobalRef((jobject) env->GetObjectClass(thiz));
+    jniEncodeCallBackId = env->GetStaticMethodID(mObjectClass, "jniEncodeCallBack",
+                                                 "([B)V");
     x264Handle = new X264Handle();
     int ret = x264Handle->init(width, height, 10, 800000);
     x264Handle->setEncodeCallBack(jniEncodeCallBack);
@@ -117,13 +125,10 @@ Java_com_aniljing_mediacodecuse_utils_MediaUtil_x264Encode(JNIEnv *env, jobject 
         LOGE("x264Handle is null");
         return -1;
     }
-    LOGE("jni %d", __LINE__);
     jbyte *data = env->GetByteArrayElements(src_data, JNI_FALSE);
-    LOGE("jni %d", __LINE__);
     x264Handle->x264Encode(data);
-    LOGE("jni %d", __LINE__);
     env->ReleaseByteArrayElements(src_data, data, 0);
-    LOGE("jni %d", __LINE__);
+    return 0;
 }
 
 extern "C"
@@ -134,6 +139,16 @@ Java_com_aniljing_mediacodecuse_utils_MediaUtil_releaseX264(JNIEnv *env, jobject
 }
 
 }
-void jniEncodeCallBack(const uint8_t *data, int dataSize) {
-    LOGD("x264 encode callBack size:%d", dataSize);
+
+void jniEncodeCallBack(const uint8_t *data, int len) {
+    LOGD("x264 encode callBack size:%d", len);
+    JNIEnv *env;
+    //从全局的JavaVM中获取到环境变量
+    gJavaVM->AttachCurrentThread(&env, NULL);
+    jbyteArray jbarray = env->NewByteArray(len);
+    jbyte *jy =   reinterpret_cast<jbyte*>(const_cast<uint8_t*>(data));
+    env->SetByteArrayRegion(jbarray, 0, len, jy);
+    env->CallStaticVoidMethod(mObjectClass, jniEncodeCallBackId, jbarray);
+    env->DeleteLocalRef(jbarray);
+//    gJavaVM->DetachCurrentThread();
 }

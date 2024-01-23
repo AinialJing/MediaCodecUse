@@ -16,7 +16,6 @@ import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Range;
@@ -27,10 +26,6 @@ import android.view.TextureView;
 import com.aniljing.mediacodecuse.utils.LogUtils;
 import com.aniljing.mediacodecuse.utils.MediaUtil;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -572,124 +567,5 @@ public class Camera2ProviderPreviewWithYUV {
             e.printStackTrace();
         }
         return null;
-    }
-
-    private void saveYuvData(byte[] y, byte[] u, byte[] v) {
-        FileOutputStream fosY = null, fosU = null, fosV = null;
-        if (frameIndex == 50) {
-            byte[] copyY = new byte[y.length];
-            byte[] copyU = new byte[u.length];
-            byte[] copyV = new byte[v.length];
-            System.arraycopy(y, 0, copyY, 0, y.length);
-            System.arraycopy(u, 0, copyU, 0, u.length);
-            System.arraycopy(v, 0, copyV, 0, v.length);
-            try {
-                File fileY = new File(Environment.getExternalStorageDirectory(), "y.yuv");
-                fosY = new FileOutputStream(fileY);
-                fosY.write(copyY);
-                File fileU = new File(Environment.getExternalStorageDirectory(), "u.yuv");
-                fosU = new FileOutputStream(fileU);
-                fosU.write(copyU);
-                File fileV = new File(Environment.getExternalStorageDirectory(), "v.yuv");
-                fosV = new FileOutputStream(fileV);
-                fosV.write(copyV);
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } finally {
-                if (fosY != null) {
-                    try {
-                        fosY.flush();
-                        fosY.close();
-                        fosY = null;
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-                if (fosU != null) {
-                    try {
-                        fosU.flush();
-                        fosU.close();
-                        fosU = null;
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-                if (fosV != null) {
-                    try {
-                        fosV.flush();
-                        fosV.close();
-                        fosV = null;
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-        }
-    }
-
-    private void saveI420Yuv(byte[] i420) {
-        if (frameIndex == 50) {
-            File fileI420 = new File(Environment.getExternalStorageDirectory(), "i420.yuv");
-            try {
-                FileOutputStream fos = new FileOutputStream(fileI420);
-                fos.write(i420);
-                fos.flush();
-                fos.close();
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    private void saveI420RotateYuv(byte[] i420Rotate) {
-        if (frameIndex == 50) {
-            File fileI420 = new File(Environment.getExternalStorageDirectory(), "i420Rotate.yuv");
-            try {
-                FileOutputStream fos = new FileOutputStream(fileI420);
-                fos.write(i420Rotate);
-                fos.flush();
-                fos.close();
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    private void saveNv21Yuv(byte[] nv21) {
-        if (frameIndex == 50) {
-            File fileI420 = new File(Environment.getExternalStorageDirectory(), "nv21.yuv");
-            try {
-                FileOutputStream fos = new FileOutputStream(fileI420);
-                fos.write(nv21);
-                fos.flush();
-                fos.close();
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    private void saveNv12Yuv(byte[] nv12) {
-        if (frameIndex == 50) {
-            File fileI420 = new File(Environment.getExternalStorageDirectory(), "nv12.yuv");
-            try {
-                FileOutputStream fos = new FileOutputStream(fileI420);
-                fos.write(nv12);
-                fos.flush();
-                fos.close();
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
     }
 }

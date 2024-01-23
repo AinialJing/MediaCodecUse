@@ -111,7 +111,6 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
             }
             if (mH264Encoder != null) {
                 int format = mH264Encoder.getMediaCodecVideo().getInputFormat().getInteger(MediaFormat.KEY_COLOR_FORMAT);
-                LogUtils.e(TAG, "Format:" + format);
                 switch (format) {
                     case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar://420p 公司
                     case MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible://google
