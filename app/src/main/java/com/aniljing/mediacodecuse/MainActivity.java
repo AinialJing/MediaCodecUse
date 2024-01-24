@@ -34,10 +34,6 @@ public class MainActivity extends AppCompatActivity {
         EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
     }
 
-    public void goToMediaCodec(View view) {
-        startActivity(new Intent(mContext, MediaCodecEncoderActivity.class));
-    }
-
     public void goToX264Codec(View view) {
         startActivity(new Intent(mContext, X264CodecActivity.class));
     }

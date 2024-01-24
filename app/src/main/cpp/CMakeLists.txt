@@ -5,8 +5,6 @@ project("mediacodec")
 set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/../jniLibs/include)
 #声明库文件路径
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/../jniLibs/lib)
-#FFmpeg
-set(FFMPEG_LIB avformat avcodec avdevice avfilter avutil swresample swscale)
 #libYuv
 set(YUV_LIB yuv)
 set(ANDROID_LIB z android log GLESv3 OpenSLES)
@@ -41,8 +39,6 @@ set_target_properties(x264
 
 target_link_libraries(
         mediaUtil
-        #链接ffmpeg库
-        ${FFMPEG_LIB}
         #链接yuv库
         ${YUV_LIB}
         #链接X264库

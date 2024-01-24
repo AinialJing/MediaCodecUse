@@ -24,12 +24,6 @@ public class MediaUtil {
 
     public native void releaseX264();
 
-    public native int intFFMpegDecode(int width,int height);
-
-    public native void ffmpegDecode(byte[] src_data);
-
-    public native void releaseFFMpegDecode();
-
     public void x264EncodeCallBack(byte[] x264) {
         if (mEncodeCallBack != null) {
             mEncodeCallBack.encodeData(x264);

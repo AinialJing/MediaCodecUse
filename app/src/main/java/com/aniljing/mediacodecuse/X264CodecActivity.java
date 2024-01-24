@@ -87,9 +87,9 @@ public class X264CodecActivity extends AppCompatActivity {
                     }
                 });
                 if (orientation == 90) {
-                    result = mMediaUtil.initX264(height, width);
+                    result = mMediaUtil.initX264Encode(height, width);
                 } else {
-                    result = mMediaUtil.initX264(width, height);
+                    result = mMediaUtil.initX264Encode(width, height);
                 }
                 startEncode = true;
                 new Thread(new X264EncodeThread()).start();

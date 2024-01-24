@@ -14,7 +14,6 @@ static jmethodID jniEncodeCallBackId = nullptr;
 
 void jniEncodeCallBack(const uint8_t *data, int dataSize);
 
-extern "C" {
 X264Handle *x264Handle = nullptr;
 
 
@@ -139,26 +138,6 @@ Java_com_aniljing_mediacodecuse_utils_MediaUtil_releaseX264(JNIEnv *env, jobject
     x264Handle = nullptr;
 }
 
-extern "C"
-JNIEXPORT jint JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_intFFMpegDecode(JNIEnv *env, jobject thiz,
-                                                                jint width, jint height) {
-
-
-}
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_ffmpegDecode(JNIEnv *env, jobject thiz,
-                                                             jbyteArray src_data) {
-
-}
-extern "C"
-JNIEXPORT void JNICALL
-Java_com_aniljing_mediacodecuse_utils_MediaUtil_releaseFFMpegDecode(JNIEnv *env, jobject thiz) {
-
-}
-
-}
 
 void jniEncodeCallBack(const uint8_t *data, int len) {
     LOGD("x264 encode callBack size:%d", len);
