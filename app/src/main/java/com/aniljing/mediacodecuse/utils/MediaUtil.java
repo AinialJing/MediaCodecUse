@@ -1,9 +1,10 @@
 package com.aniljing.mediacodecuse.utils;
 
 
+import android.view.Surface;
+
 public class MediaUtil {
     private static EncodeCallBack mEncodeCallBack;
-    private DecodeCallback mDecodeCallback;
 
     public native void yv12ToI420(byte[] yv12, byte[] i420, int width, int height);
 
@@ -24,6 +25,12 @@ public class MediaUtil {
 
     public native void releaseX264();
 
+    public native int initFFmpegDecode(Surface surface);
+
+    public native void ffmpegDecode(byte[] srcData,int len);
+
+    public native void releaseFFmpegDecode();
+
     public void x264EncodeCallBack(byte[] x264) {
         if (mEncodeCallBack != null) {
             mEncodeCallBack.encodeData(x264);
@@ -32,10 +39,6 @@ public class MediaUtil {
 
     public void setEncodeCallBack(EncodeCallBack encodeCallBack) {
         mEncodeCallBack = encodeCallBack;
-    }
-
-    public void setDecodeCallback(DecodeCallback decodeCallback) {
-        mDecodeCallback = decodeCallback;
     }
 
     public interface EncodeCallBack {
@@ -49,12 +52,6 @@ public class MediaUtil {
     public static void jniEncodeCallBack(byte[] data) {
         if (mEncodeCallBack != null) {
             mEncodeCallBack.encodeData(data);
-        }
-    }
-
-    public void jniDecodeCallBack(byte[] data) {
-        if (mDecodeCallback != null) {
-            mDecodeCallback.decodeData(data);
         }
     }
 

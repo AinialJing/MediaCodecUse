@@ -26,7 +26,6 @@ X264Handle::~X264Handle() {
 }
 
 int X264Handle::initEncode(int width, int height, int fps, int bitrate) {
-    LOGE("init encode:width=%d,height=%d,fps=%d,bitrate=%d", width, height, fps, bitrate);
     std::lock_guard<std::mutex> l(m_mutex);
     m_frameLen = width * height;
     if (videoCodec) {
@@ -97,7 +96,6 @@ void X264Handle::x264Encode(int8_t *data) {
     std::lock_guard<std::mutex> l(m_mutex);
     if (!pic_in)
         return;
-    LOGE("encode %d", __LINE__);
     int offset = 0;
     memcpy(pic_in->img.plane[0], data, (size_t) m_frameLen); // y
     offset += m_frameLen;
@@ -110,7 +108,6 @@ void X264Handle::x264Encode(int8_t *data) {
     int ret = x264_encoder_encode(videoCodec, &pp_nal, &pi_nal, pic_in, &pic_out);
     if (ret >= 0) {
         if (ret > 0) {
-            LOGD("encode finished,encode len:%d,nal size:%d", ret, pi_nal);
             for (int i = 0; i < pi_nal; ++i) {
                 x264_nal_t nal = pp_nal[i];
                 if (nal.i_type == NAL_SPS) {
