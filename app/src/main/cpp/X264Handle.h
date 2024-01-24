@@ -33,7 +33,6 @@ public:
 
     void x264Encode(int8_t *data);
 
-    void x264Decode(int8_t *data);
 };
 
 

@@ -139,7 +139,3 @@ void X264Handle::x264Encode(int8_t *data) {
     }
 
 }
-
-void X264Handle::x264Decode(int8_t *data) {
-
-}
