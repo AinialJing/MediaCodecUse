@@ -27,11 +27,4 @@
             android:layout_weight="1" />
     </LinearLayout>
 
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/startPushStream"
-        android:layout_width="100dp"
-        android:layout_height="40dp"
-        android:text="开始推流"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/videoRoot" />
 </androidx.constraintlayout.widget.ConstraintLayout>

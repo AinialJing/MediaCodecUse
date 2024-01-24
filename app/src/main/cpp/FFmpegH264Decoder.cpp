@@ -61,51 +61,48 @@ void FFmpegH264Decoder::decodeH264Packet(unsigned char *pBuff, int len) {
         return;
     }
     LOGE("decode success");
-    //从解码器内部缓存中提取解码后的音视频帧
-    ret = avcodec_receive_frame(mDecodeContext, mDecodeFrame);
-    if (ret < 0) {
-        av_packet_unref(mDecodePacket);
-        LOGE("avcodec_receive_frame error");
-        return;
-    }
-    LOGE("decode:%d", __LINE__);
-    mSwsContext = sws_getContext(mDecodeContext->width, mDecodeContext->height,
-                                 mDecodeContext->pix_fmt, mDecodeContext->width,
-                                 mDecodeContext->height, AV_PIX_FMT_RGBA, SWS_BILINEAR,
-                                 0, 0, 0);
-    LOGE("decode:%d", __LINE__);
-    // 设置渲染格式和大小
-    ANativeWindow_setBuffersGeometry(mNativeWindow, mDecodeContext->width,
-                                     mDecodeContext->height,
-                                     WINDOW_FORMAT_RGBA_8888);
-    // 分配渲染缓冲区
-    LOGE("decode:%d", __LINE__);
-    ANativeWindow_Buffer outBuffer;
-    uint8_t *dst_data[4];
-    int dst_linesize[4];
-    av_image_alloc(dst_data, dst_linesize, mDecodeContext->width, mDecodeContext->height,
-                   AV_PIX_FMT_RGBA, 1);
-    // 锁定 Surface 并获取渲染缓冲区
-    LOGE("decode:%d", __LINE__);
-    ANativeWindow_lock(mNativeWindow, &outBuffer, NULL);
-    // 将解码后的帧转换为目标格式
-    LOGE("decode:%d", __LINE__);
-    sws_scale(mSwsContext, mDecodeFrame->data, mDecodeFrame->linesize, 0, mDecodeFrame->height,
-              dst_data, dst_linesize);
+    while (ret>=0){
+        //从解码器内部缓存中提取解码后的音视频帧
+        ret = avcodec_receive_frame(mDecodeContext, mDecodeFrame);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+            return;
+        else if (ret < 0) {
+            av_packet_unref(mDecodePacket);
+            LOGE("avcodec_receive_frame error");
+            return;
+        }
+        mSwsContext = sws_getContext(mDecodeContext->width, mDecodeContext->height,
+                                     mDecodeContext->pix_fmt, mDecodeContext->width,
+                                     mDecodeContext->height, AV_PIX_FMT_RGBA, SWS_BILINEAR,
+                                     0, 0, 0);
+        // 设置渲染格式和大小
+        ANativeWindow_setBuffersGeometry(mNativeWindow, mDecodeContext->width,
+                                         mDecodeContext->height,
+                                         WINDOW_FORMAT_RGBA_8888);
+        // 分配渲染缓冲区
+        ANativeWindow_Buffer outBuffer;
+        uint8_t *dst_data[4];
+        int dst_linesize[4];
+        av_image_alloc(dst_data, dst_linesize, mDecodeContext->width, mDecodeContext->height,
+                       AV_PIX_FMT_RGBA, 1);
+        // 锁定 Surface 并获取渲染缓冲区
+        ANativeWindow_lock(mNativeWindow, &outBuffer, NULL);
+        // 将解码后的帧转换为目标格式
+        sws_scale(mSwsContext, mDecodeFrame->data, mDecodeFrame->linesize, 0, mDecodeFrame->height,
+                  dst_data, dst_linesize);
 
-    //渲染
-    LOGE("decode:%d", __LINE__);
-    uint8_t *first = static_cast<uint8_t *>(outBuffer.bits);
-    uint8_t *src_data = dst_data[0];
-    int dstStride = outBuffer.stride * 4;
-    int src_linesize = dst_linesize[0];
-    for (int i = 0; i < outBuffer.height; ++i) {
-        memcpy(first + i * dstStride, src_data + i * src_linesize, dstStride);
+        //渲染
+        uint8_t *first = static_cast<uint8_t *>(outBuffer.bits);
+        uint8_t *src_data = dst_data[0];
+        int dstStride = outBuffer.stride * 4;
+        int src_linesize = dst_linesize[0];
+        for (int i = 0; i < outBuffer.height; ++i) {
+            memcpy(first + i * dstStride, src_data + i * src_linesize, dstStride);
+        }
+        // 解锁 Surface
+        ANativeWindow_unlockAndPost(mNativeWindow);
+        sws_freeContext(mSwsContext);
+        av_packet_unref(mDecodePacket);
     }
-    // 解锁 Surface
-    LOGE("decode:%d", __LINE__);
-    ANativeWindow_unlockAndPost(mNativeWindow);
-    sws_freeContext(mSwsContext);
-    av_packet_unref(mDecodePacket);
 }
 
