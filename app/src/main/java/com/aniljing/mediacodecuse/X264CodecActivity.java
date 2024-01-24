@@ -63,16 +63,15 @@ public class X264CodecActivity extends AppCompatActivity {
         });
         mPreviewWithYUV.setYUVDataCallBack((data, width, height, orientation) -> {
             if (!initEncode) {
-                int result;
                 mMediaUtil.setEncodeCallBack(encode -> {
                     if (mMediaUtil != null && initDecode) {
                         decodeQue.add(encode);
                     }
                 });
                 if (orientation == 90) {
-                    result = mMediaUtil.initX264Encode(height, width);
+                    mMediaUtil.initX264Encode(height, width);
                 } else {
-                    result = mMediaUtil.initX264Encode(width, height);
+                    mMediaUtil.initX264Encode(width, height);
                 }
                 startEncode = true;
                 initEncode = true;
