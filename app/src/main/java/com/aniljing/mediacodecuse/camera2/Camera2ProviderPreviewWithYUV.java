@@ -58,7 +58,6 @@ public class Camera2ProviderPreviewWithYUV {
     private byte[] i420;
     private YUVDataCallBack mYUVDataCallBack;
     private int orientation;
-    private int frameIndex = 0;
 
     public Camera2ProviderPreviewWithYUV(Activity mContext) {
         this.mContext = mContext;
@@ -120,7 +119,7 @@ public class Camera2ProviderPreviewWithYUV {
                     mImageReader = ImageReader.newInstance(mPreviewSize.getWidth(), mPreviewSize.getHeight(),
                             ImageFormat.YUV_420_888, 2);
                     mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mCameraHandler);
-                    cameraManager.openCamera(mCameraId, mStateCallback, mCameraHandler);
+                    cameraManager.openCamera(mCameraId, mCameraDeviceStateCallback, mCameraHandler);
                 }
             }
         } catch (CameraAccessException r) {
@@ -130,7 +129,7 @@ public class Camera2ProviderPreviewWithYUV {
         }
     }
 
-    private final CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
+    private final CameraDevice.StateCallback mCameraDeviceStateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(CameraDevice camera) {
             try {
@@ -146,7 +145,7 @@ public class Camera2ProviderPreviewWithYUV {
                 mPreviewBuilder.addTarget(previewSurface);
                 mPreviewBuilder.addTarget(mImageReader.getSurface());
                 //创建会话
-                mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, mImageReader.getSurface()), mStateCallBack, mCameraHandler);
+                mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, mImageReader.getSurface()), mCaptureSessionStateCallBack, mCameraHandler);
             } catch (CameraAccessException e) {
                 e.printStackTrace();
                 LogUtils.e(TAG, "onOpened:" + e.getMessage());
@@ -191,12 +190,11 @@ public class Camera2ProviderPreviewWithYUV {
                     mYUVDataCallBack.yuvData(i420, width, height, orientation);
                 }
             }
-            frameIndex++;
             image.close();
         }
     };
 
-    private final CameraCaptureSession.StateCallback mStateCallBack = new CameraCaptureSession.StateCallback() {
+    private final CameraCaptureSession.StateCallback mCaptureSessionStateCallBack = new CameraCaptureSession.StateCallback() {
         @Override
         public void onConfigured(CameraCaptureSession session) {
             try {
