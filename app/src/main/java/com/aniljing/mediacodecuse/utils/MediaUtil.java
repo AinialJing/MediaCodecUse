@@ -2,6 +2,7 @@ package com.aniljing.mediacodecuse.utils;
 
 
 public class MediaUtil {
+    private static ConnectErrorCallBack mCallBack;
 
     public native void yv12ToI420(byte[] yv12, byte[] i420, int width, int height);
 
@@ -15,6 +16,25 @@ public class MediaUtil {
 
     public native void i420Scale(byte[] src_i420_data, int width, int height, byte[] dst_i420_data, int dst_width, int dst_height, int filter_mode);
 
+    public native void connectRtmp(String url);
+
+    public native void sendRtmpData(byte[] data, int len, long tms, int type);
+
+    public native void releaseRtmp();
+
+    public static void connectErrorCallBack(int error) {
+        if (mCallBack != null) {
+            mCallBack.connectState(error);
+        }
+    }
+
+    public interface ConnectErrorCallBack {
+        void connectState(int state);
+    }
+
+    public void setCallBack(ConnectErrorCallBack callBack) {
+        mCallBack = callBack;
+    }
 
     static {
         System.loadLibrary("mediaUtil");

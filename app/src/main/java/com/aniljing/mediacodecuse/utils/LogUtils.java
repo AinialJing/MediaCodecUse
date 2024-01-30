@@ -11,7 +11,7 @@ public class LogUtils {
 
     public static void i(String tag, String msg) {
         if (DEBUG) {
-            Log.i(TAG, tag + "-->" + msg);
+            Log.i(tag, msg);
         }
     }
 
@@ -23,7 +23,7 @@ public class LogUtils {
 
     public static void d(String tag, String msg) {
         if (DEBUG) {
-            Log.d(TAG, tag + "-->" + msg);
+            Log.d(tag,  msg);
         }
     }
 
@@ -35,19 +35,19 @@ public class LogUtils {
 
     public static void v(String tag, String msg) {
         if (DEBUG) {
-            Log.v(TAG, tag + "-->" + msg);
+            Log.v(tag,  msg);
         }
     }
 
     public static void v(String msg) {
         if (DEBUG) {
-            Log.v(TAG, "-->" + msg);
+            Log.v(TAG,  msg);
         }
     }
 
     public static void e(String tag, String msg) {
         if (DEBUG) {
-            Log.e(TAG, tag + "-->" + msg);
+            Log.e(tag, msg);
         }
     }
 

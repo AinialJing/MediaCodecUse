@@ -9,6 +9,7 @@ import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.Surface;
+import android.widget.Toast;
 
 import com.aniljing.mediacodecuse.camera2.Camera2ProviderPreviewWithYUV;
 import com.aniljing.mediacodecuse.camera2.GlUtil;
@@ -18,6 +19,7 @@ import com.aniljing.mediacodecuse.codec.CodecH264Encoder;
 import com.aniljing.mediacodecuse.databinding.ActivityMediaCodecEncoderBinding;
 import com.aniljing.mediacodecuse.utils.LogUtils;
 import com.aniljing.mediacodecuse.utils.MediaUtil;
+import com.aniljing.mediacodecuse.utils.RTMPConnectState;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -66,6 +68,7 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
     private File encodeFile = new File(Environment.getExternalStorageDirectory(), "encode.h264");
     private BufferedOutputStream bosEncode;
     private MediaUtil mMediaUtil;
+    private final String RTMP_URL = "rtmp://live-push.bilivideo.com/live-bvc/?streamname=live_1924735465_52862621&key=ebe4ed2dc33896247d9ff5843014f3a5&schedule=rtmp&pflag=1";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,12 +87,20 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
                 throw new RuntimeException(e);
             }
         }
+        LogUtils.e(TAG, "Start");
         mPreviewWithYUV = new Camera2ProviderPreviewWithYUV(this);
         mPreviewWithYUV.initTexture(mBinding.preview);
+        mMediaUtil.setCallBack(state -> {
+            LogUtils.e(TAG, "Rtmp state:" + state);
+            mMediaUtil.releaseRtmp();
+            runOnUiThread(() -> Toast.makeText(mContext, RTMPConnectState.getErrorMsg(mContext, state), Toast.LENGTH_SHORT).show());
+        });
+        mMediaUtil.connectRtmp(RTMP_URL);
         mPreviewWithYUV.setYUVDataCallBack((i420, width, height, orientation) -> {
             if (mH264Encoder == null) {
                 mH264Encoder = new CodecH264Encoder();
-                mH264Encoder.initCodec((data, presentationTimeUs) -> {
+                mH264Encoder.initCodec((data, bufferInfo) -> {
+                    mMediaUtil.sendRtmpData(data, data.length, bufferInfo.presentationTimeUs, bufferInfo.flags);
                     try {
                         if (bosEncode != null) {
                             bosEncode.write(data);
@@ -213,6 +224,9 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+        }
+        if (mMediaUtil != null) {
+            mMediaUtil.releaseRtmp();
         }
     }
 

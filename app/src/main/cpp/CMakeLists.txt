@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.18.1)
 
 project("mediacodec")
+#添加rtmp子目录
+add_subdirectory(librtmp)
 #声明头文件路径
 set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/../jniLibs/include)
 #声明库文件路径
@@ -20,10 +22,12 @@ add_library(
         SHARED
         nativeMedia.cpp
         YuvUtil.cpp
+        RtmpHandler.cpp
 )
 
 target_link_libraries(
         mediaUtil
+        rtmp
         #链接yuv库
         ${YUV_LIB}
         #链接本地日志库

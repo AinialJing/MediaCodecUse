@@ -6,6 +6,15 @@
 #include <string>
 #include "Log.h"
 #include "YuvUtil.h"
+#include "RtmpHandler.h"
+
+JavaVM *gJavaVM;
+jclass mObjectClass = nullptr;
+jmethodID errorCallBackId= nullptr;
+
+RtmpHandler *rtmpHandler;
+
+void throwErrToJava(int error_code);
 
 extern "C" {
 
@@ -94,5 +103,75 @@ Java_com_aniljing_mediacodecuse_utils_MediaUtil_i420Scale(JNIEnv *env, jobject t
     env->ReleaseByteArrayElements(dst_i420_array, dst_i420_data, 0);
 }
 
+}
+
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_aniljing_mediacodecuse_utils_MediaUtil_connectRtmp(JNIEnv *env, jobject thiz,
+                                                            jstring url_) {
+    env->GetJavaVM(&gJavaVM);
+    mObjectClass = (jclass) env->NewGlobalRef((jobject) env->GetObjectClass(thiz));
+    errorCallBackId=env->GetStaticMethodID(mObjectClass,"connectErrorCallBack","(I)V");
+    const char *path = env->GetStringUTFChars(url_, JNI_FALSE);
+    char *url = new char[strlen(path) + 1];
+    LOGE("jni connectRtmp");
+    rtmpHandler = new RtmpHandler();
+    strcpy(url, path);
+    rtmpHandler->setStartErrorCallBack(throwErrToJava);
+    rtmpHandler->start(url);
+    env->ReleaseStringUTFChars(url_, path);
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_aniljing_mediacodecuse_utils_MediaUtil_sendRtmpData(JNIEnv *env, jobject thiz,
+                                                             jbyteArray data, jint len, jlong tms,
+                                                             jint type) {
+    jbyte *encodeData = env->GetByteArrayElements(data, JNI_FALSE);
+    if (type == 1) {//key frame
+        rtmpHandler->sendFrame(type, reinterpret_cast<uint8_t *>(encodeData), len, tms);
+    } else if (type == 2) {//sps pps
+        int pps_len, sps_len = 0;
+        uint8_t sps[100];
+        uint8_t pps[100];
+        for (int i = 0; i < len; i++) {
+            //防止越界
+            if (i + 4 < len) {
+                if (encodeData[i] == 0x00 && encodeData[i + 1] == 0x00
+                    && encodeData[i + 2] == 0x00
+                    && encodeData[i + 3] == 0x01) {
+                    if (encodeData[i + 4] == 0x68) {
+                        sps_len = i - 4;
+                        //sps解析
+                        memcpy(sps, encodeData + 4, sps_len);
+                        //解析pps
+                        pps_len = len - (4 + sps_len) - 4;
+                        memcpy(pps, encodeData + 4 + sps_len + 4, pps_len);
+                        LOGI("sps:%d pps:%d", sps_len, pps_len);
+                        rtmpHandler->sendSpsPps(sps, pps, sps_len, pps_len, tms);
+                        break;
+                    }
+                }
+
+            }
+        }
+    } else {//frame
+        rtmpHandler->sendFrame(type, reinterpret_cast<uint8_t *>(encodeData), len, tms);
+    }
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_aniljing_mediacodecuse_utils_MediaUtil_releaseRtmp(JNIEnv *env, jobject thiz) {
+    delete rtmpHandler;
+    rtmpHandler = nullptr;
+}
+
+void throwErrToJava(int error_code){
+    JNIEnv *env;
+    //从全局的JavaVM中获取到环境变量
+    gJavaVM->AttachCurrentThread(&env, NULL);
+    LOGD("nativeMedia:%d,error_code:%d",__LINE__,error_code);
+    env->CallStaticVoidMethod(mObjectClass,errorCallBackId,error_code);
+    gJavaVM->DetachCurrentThread();
 }
 

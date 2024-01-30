@@ -3,7 +3,6 @@ package com.aniljing.mediacodecuse.codec;
 import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
-import android.os.Bundle;
 
 import com.aniljing.mediacodecuse.camera2.CameraUtil;
 import com.aniljing.mediacodecuse.utils.LogUtils;
@@ -31,8 +30,8 @@ public class CodecH264Encoder {
             MediaCodecInfo mediaCodecInfo = CameraUtil.selectCodec(MediaFormat.MIMETYPE_VIDEO_AVC);
             LogUtils.e(TAG,mediaCodecInfo.getName());
             MediaFormat mediaEncodeFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, orientation == 90 ? height : width, orientation == 90 ? width : height);
-            mediaEncodeFormat.setInteger(MediaFormat.KEY_BIT_RATE, width*height*5);
-            mediaEncodeFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 25);
+            mediaEncodeFormat.setInteger(MediaFormat.KEY_BIT_RATE, 800_000);
+            mediaEncodeFormat.setInteger(MediaFormat.KEY_FRAME_RATE, 10);
             mediaEncodeFormat.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
             mediaEncodeFormat.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible);
             mediaEncodeFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2);
@@ -77,20 +76,27 @@ public class CodecH264Encoder {
                 ByteBuffer[] outputBuffers = mMediaCodecVideo.getOutputBuffers();
                 //获取编码好的输出缓冲区的索引
                 MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-                if (System.currentTimeMillis() - timeStamp >= 2000) {
-                    Bundle params = new Bundle();
-                    params.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
-                    //dsp 芯片触发I帧
-                    mMediaCodecVideo.setParameters(params);
-                    timeStamp = System.currentTimeMillis();
-                }
+//                if (System.currentTimeMillis() - timeStamp >= 2000) {
+//                    Bundle params = new Bundle();
+//                    params.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+//                    //dsp 芯片触发I帧
+//                    mMediaCodecVideo.setParameters(params);
+//                    timeStamp = System.currentTimeMillis();
+//                }
                 int outputIndex = mMediaCodecVideo.dequeueOutputBuffer(bufferInfo, 4000);
                 if (outputIndex >= 0) {
                     ByteBuffer outputBuffer = outputBuffers[outputIndex];
                     byte[] outData = new byte[bufferInfo.size];
                     outputBuffer.get(outData);
+                    if (bufferInfo.flags==2){
+                        LogUtils.e(TAG,"sps pps");
+                    } else if (bufferInfo.flags==1) {
+                        LogUtils.e(TAG,"key frame");
+                    }else{
+                        LogUtils.e(TAG,"frame:"+bufferInfo.flags);
+                    }
                     if (mCallBack != null) {
-                        mCallBack.encodeData(outData, bufferInfo.presentationTimeUs);
+                        mCallBack.encodeData(outData, bufferInfo);
                     }
                     mMediaCodecVideo.releaseOutputBuffer(outputIndex, false);
                 }
@@ -104,7 +110,7 @@ public class CodecH264Encoder {
 
 
     public interface EncodeCallBack {
-        void encodeData(byte[] out, long presentationTimeUs);
+        void encodeData(byte[] out, MediaCodec.BufferInfo bufferInfo);
     }
 
     public void stopEncode() {
