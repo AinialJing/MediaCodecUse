@@ -9,6 +9,8 @@ set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/../jniLibs/include)
 set(LIB_DIR ${CMAKE_SOURCE_DIR}/../jniLibs/lib)
 #libYuv
 set(YUV_LIB yuv)
+#ffmpeg
+set(FFMPEG_LIB avcodec avformat avutil swscale swresample)
 set(ANDROID_LIB z android log GLESv3 OpenSLES)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -L${LIB_DIR}/${ANDROID_ABI} -std=gnu++11")
@@ -30,6 +32,8 @@ target_link_libraries(
         rtmp
         #链接yuv库
         ${YUV_LIB}
+        #链接ffmpeg库
+        ${FFMPEG_LIB}
         #链接本地日志库
         ${ANDROID_LIB}
 )

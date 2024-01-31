@@ -57,7 +57,7 @@ void RtmpHandler::sendSpsPps(uint8_t *sps, uint8_t *pps, int sps_len, int pps_le
     packet->m_nTimeStamp = tms;
     packet->m_hasAbsTimestamp = 0;
     packet->m_headerType = RTMP_PACKET_SIZE_MEDIUM;
-    //一定要设置好时间戳，要不然解码视频的时候，就会出现卡顿的感觉
+    //一定要设置好时间戳，要不然解码视频的时候，就会出现卡顿
     packet->m_nTimeStamp = RTMP_GetTime() - start_time;
     packets.push(packet);
 }
@@ -100,7 +100,7 @@ void RtmpHandler::sendFrame(int type, uint8_t *payload, int i_payload, const lon
     packet->m_packetType = RTMP_PACKET_TYPE_VIDEO;
     packet->m_nChannel = 0x10;
     packet->m_headerType = RTMP_PACKET_SIZE_LARGE;
-    //一定要设置好时间戳，要不然解码视频的时候，就会出现卡顿的感觉
+    //一定要设置好时间戳，要不然解码视频的时候，就会出现卡顿
     packet->m_nTimeStamp = RTMP_GetTime() - start_time;
     packets.push(packet);
 }
@@ -190,4 +190,103 @@ void RtmpHandler::start(char *url) {
 
 void RtmpHandler::setStartErrorCallBack(StartErrorCallBack startErrorCallBack) {
     m_startErrorCallBack = startErrorCallBack;
+}
+
+void RtmpHandler::initAndPullRtmpData(ANativeWindow *nativeWindow, char *url) {
+    LOGE("RtmpHandler::initAndPullRtmpData");
+    isPulling = true;
+    std::thread pullThread(&RtmpHandler::pullProcessor, this, nativeWindow, url);
+    pullThread.detach();
+}
+
+void RtmpHandler::pullProcessor(ANativeWindow *nativeWindow, char *url) {
+    AVFormatContext *fct = avformat_alloc_context();
+    if (avformat_open_input(&fct, url, nullptr, nullptr) != 0) {
+        LOGE("open input failed");
+        return;
+    }
+    // 获取流信息
+    if (avformat_find_stream_info(fct, nullptr) < 0) {
+        LOGE("find stream info failed");
+        return;
+    }
+    int m_videoStreamIdx = -1;
+    //查找音视频流对应索引
+    for (int i = 0; i < (int) fct->nb_streams; ++i) {
+        //编解码参数
+        AVCodecParameters *codecParameters = fct->streams[i]->codecpar;
+        if (codecParameters->codec_type == AVMEDIA_TYPE_VIDEO) {//视频流
+            //视频流索引
+            m_videoStreamIdx = i;
+            //获取视频解码器
+            mDecodeCodec = avcodec_find_decoder(codecParameters->codec_id);
+            if (mDecodeCodec == nullptr) {
+                LOGE("Video AVCodec is NULL");
+                return;
+            }
+            //初始化视频解码器上下文
+            mDecodeContext = avcodec_alloc_context3(mDecodeCodec);
+            //解码器参数设置到解码器上下文环境
+            avcodec_parameters_to_context(mDecodeContext, codecParameters);
+            //打开视频解码器
+            if (avcodec_open2(mDecodeContext, mDecodeCodec, NULL) < 0) {
+                LOGE("Could not open codec.");
+                return;
+            }
+        }
+    }
+    // 创建图像转换上下文
+    mSwsContext = sws_getContext(mDecodeContext->width, mDecodeContext->height,
+                                 mDecodeContext->pix_fmt, mDecodeContext->width,
+                                 mDecodeContext->height, AV_PIX_FMT_RGBA, SWS_BILINEAR,
+                                 0, 0, 0);
+    // 设置渲染格式和大小
+    ANativeWindow_setBuffersGeometry(nativeWindow, mDecodeContext->width, mDecodeContext->height,
+                                     WINDOW_FORMAT_RGBA_8888);
+    // 分配渲染缓冲区
+    ANativeWindow_Buffer outBuffer;
+    AVPacket *packet = av_packet_alloc();
+    if (!packet) {
+        return;
+    }
+    while (av_read_frame(fct, packet) >= 0) {
+        if (packet->stream_index == m_videoStreamIdx) {
+            // 将要解码的数据包送入解码器
+            avcodec_send_packet(mDecodeContext, packet);
+            mDecodeFrame = av_frame_alloc();
+            //从解码器内部缓存中提取解码后的音视频帧
+            int ret = avcodec_receive_frame(mDecodeContext, mDecodeFrame);
+            if (ret == AVERROR(EAGAIN)) {
+                continue;
+            } else if (ret < 0) {
+                break;
+            }
+            uint8_t * dst_data[4];
+            int dst_linesize[4];
+            av_image_alloc(dst_data, dst_linesize, mDecodeContext->width, mDecodeContext->height,
+                           AV_PIX_FMT_RGBA, 1);
+            // 锁定 Surface 并获取渲染缓冲区
+            ANativeWindow_lock(nativeWindow, &outBuffer, NULL);
+            // 将解码后的帧转换为目标格式
+            sws_scale(mSwsContext, mDecodeFrame->data, mDecodeFrame->linesize, 0,
+                      mDecodeFrame->height,
+                      dst_data, dst_linesize);
+
+            //渲染
+            uint8_t * first = static_cast<uint8_t *>(outBuffer.bits);
+            uint8_t * src_data = dst_data[0];
+            int dstStride = outBuffer.stride * 4;
+            int src_linesize = dst_linesize[0];
+            for (int i = 0; i < outBuffer.height; ++i) {
+                memcpy(first + i * dstStride, src_data + i * src_linesize, dstStride);
+            }
+            // 解锁 Surface
+            ANativeWindow_unlockAndPost(nativeWindow);
+            av_frame_free(&mDecodeFrame);
+        }
+    }
+    ANativeWindow_release(nativeWindow);
+    sws_freeContext(mSwsContext);
+    avcodec_free_context(&mDecodeContext);
+    avformat_close_input(&fct);
 }

@@ -7,6 +7,16 @@
 
 #include "PacketQueue.h"
 #include "librtmp/rtmp.h"
+#include <android/native_window.h>
+#include <android/native_window_jni.h>
+
+extern "C" {
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libavutil/avutil.h>
+#include <libswscale/swscale.h>
+#include <libavutil/imgutils.h>
+}
 
 typedef void (*StartErrorCallBack)(int error);
 
@@ -28,14 +38,25 @@ public:
 
     void pushProcessor(void *args);
 
+    void initAndPullRtmpData(ANativeWindow *, char *);
+
+    void pullProcessor(ANativeWindow *nativeWindow, char *url);
+
 private:
 
     PacketQueue<RTMPPacket *> packets;
 
     std::atomic<bool> isPushing;
+    std::atomic<bool> isPulling;
     uint32_t start_time;
 
     StartErrorCallBack m_startErrorCallBack;
+
+    AVCodec *mDecodeCodec;
+    AVCodecContext *mDecodeContext;
+    AVFrame *mDecodeFrame;
+    SwsContext *mSwsContext;
+
 };
 
 

@@ -1,6 +1,8 @@
 package com.aniljing.mediacodecuse.utils;
 
 
+import android.view.Surface;
+
 public class MediaUtil {
     private static ConnectErrorCallBack mCallBack;
 
@@ -19,6 +21,8 @@ public class MediaUtil {
     public native void connectRtmp(String url);
 
     public native void sendRtmpData(byte[] data, int len, long tms, int type);
+
+    public native void initAndPullRtmpData(Surface surface,String url);
 
     public native void releaseRtmp();
 

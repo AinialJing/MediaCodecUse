@@ -7,12 +7,16 @@
 #include "Log.h"
 #include "YuvUtil.h"
 #include "RtmpHandler.h"
+#include <android/native_window.h>
+#include <android/native_window_jni.h>
 
 JavaVM *gJavaVM;
 jclass mObjectClass = nullptr;
-jmethodID errorCallBackId= nullptr;
+jmethodID errorCallBackId = nullptr;
 
 RtmpHandler *rtmpHandler;
+
+ANativeWindow *m_nativeWindow;
 
 void throwErrToJava(int error_code);
 
@@ -112,12 +116,11 @@ Java_com_aniljing_mediacodecuse_utils_MediaUtil_connectRtmp(JNIEnv *env, jobject
                                                             jstring url_) {
     env->GetJavaVM(&gJavaVM);
     mObjectClass = (jclass) env->NewGlobalRef((jobject) env->GetObjectClass(thiz));
-    errorCallBackId=env->GetStaticMethodID(mObjectClass,"connectErrorCallBack","(I)V");
+    errorCallBackId = env->GetStaticMethodID(mObjectClass, "connectErrorCallBack", "(I)V");
     const char *path = env->GetStringUTFChars(url_, JNI_FALSE);
     char *url = new char[strlen(path) + 1];
-    LOGE("jni connectRtmp");
-    rtmpHandler = new RtmpHandler();
     strcpy(url, path);
+    rtmpHandler = new RtmpHandler();
     rtmpHandler->setStartErrorCallBack(throwErrToJava);
     rtmpHandler->start(url);
     env->ReleaseStringUTFChars(url_, path);
@@ -166,12 +169,25 @@ Java_com_aniljing_mediacodecuse_utils_MediaUtil_releaseRtmp(JNIEnv *env, jobject
     rtmpHandler = nullptr;
 }
 
-void throwErrToJava(int error_code){
+void throwErrToJava(int error_code) {
     JNIEnv *env;
     //从全局的JavaVM中获取到环境变量
     gJavaVM->AttachCurrentThread(&env, NULL);
-    LOGD("nativeMedia:%d,error_code:%d",__LINE__,error_code);
-    env->CallStaticVoidMethod(mObjectClass,errorCallBackId,error_code);
+    LOGD("nativeMedia:%d,error_code:%d", __LINE__, error_code);
+    env->CallStaticVoidMethod(mObjectClass, errorCallBackId, error_code);
+    //要解绑当前线程
     gJavaVM->DetachCurrentThread();
 }
 
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_aniljing_mediacodecuse_utils_MediaUtil_initAndPullRtmpData(JNIEnv *env, jobject thiz,
+                                                                    jobject surface, jstring url_) {
+    m_nativeWindow = ANativeWindow_fromSurface(env, surface);
+    const char *path = env->GetStringUTFChars(url_, JNI_FALSE);
+    char *url = new char[strlen(path) + 1];
+    strcpy(url, path);
+    rtmpHandler->initAndPullRtmpData(m_nativeWindow, url);
+    env->ReleaseStringUTFChars(url_, path);
+}

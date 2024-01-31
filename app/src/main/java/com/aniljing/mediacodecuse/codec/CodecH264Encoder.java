@@ -88,13 +88,13 @@ public class CodecH264Encoder {
                     ByteBuffer outputBuffer = outputBuffers[outputIndex];
                     byte[] outData = new byte[bufferInfo.size];
                     outputBuffer.get(outData);
-                    if (bufferInfo.flags==2){
-                        LogUtils.e(TAG,"sps pps");
-                    } else if (bufferInfo.flags==1) {
-                        LogUtils.e(TAG,"key frame");
-                    }else{
-                        LogUtils.e(TAG,"frame:"+bufferInfo.flags);
-                    }
+//                    if (bufferInfo.flags==2){
+//                        LogUtils.e(TAG,"sps pps");
+//                    } else if (bufferInfo.flags==1) {
+//                        LogUtils.e(TAG,"key frame");
+//                    }else{
+//                        LogUtils.e(TAG,"frame:"+bufferInfo.flags);
+//                    }
                     if (mCallBack != null) {
                         mCallBack.encodeData(outData, bufferInfo);
                     }

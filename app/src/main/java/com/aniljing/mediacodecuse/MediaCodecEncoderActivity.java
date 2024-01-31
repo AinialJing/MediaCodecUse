@@ -9,6 +9,7 @@ import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.Surface;
+import android.view.SurfaceHolder;
 import android.widget.Toast;
 
 import com.aniljing.mediacodecuse.camera2.Camera2ProviderPreviewWithYUV;
@@ -33,6 +34,7 @@ import java.nio.FloatBuffer;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class MediaCodecEncoderActivity extends AppCompatActivity {
@@ -69,6 +71,8 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
     private BufferedOutputStream bosEncode;
     private MediaUtil mMediaUtil;
     private final String RTMP_URL = "rtmp://live-push.bilivideo.com/live-bvc/?streamname=live_1924735465_52862621&key=ebe4ed2dc33896247d9ff5843014f3a5&schedule=rtmp&pflag=1";
+    private final String RTMP_PULL_URL = "http://live.bilibili.com/27242336";
+    private final String RTMP_PERSONAL="rtmp://124.223.23.72/live/livestream";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,7 +99,7 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
             mMediaUtil.releaseRtmp();
             runOnUiThread(() -> Toast.makeText(mContext, RTMPConnectState.getErrorMsg(mContext, state), Toast.LENGTH_SHORT).show());
         });
-        mMediaUtil.connectRtmp(RTMP_URL);
+        mMediaUtil.connectRtmp(RTMP_PERSONAL);
         mPreviewWithYUV.setYUVDataCallBack((i420, width, height, orientation) -> {
             if (mH264Encoder == null) {
                 mH264Encoder = new CodecH264Encoder();
@@ -150,6 +154,27 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
 
             }
         });
+        mBinding.pullVideo.getHolder().addCallback(new SurfaceHolder.Callback2() {
+            @Override
+            public void surfaceRedrawNeeded(@NonNull SurfaceHolder holder) {
+
+            }
+
+            @Override
+            public void surfaceCreated(@NonNull SurfaceHolder holder) {
+                mMediaUtil.initAndPullRtmpData(holder.getSurface(), RTMP_PERSONAL);
+            }
+
+            @Override
+            public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
+
+            }
+
+            @Override
+            public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
+
+            }
+        });
         mBinding.render.setEGLContextClientVersion(2);
         mBinding.render.setRenderer(new GLSurfaceView.Renderer() {
             @Override
@@ -179,8 +204,6 @@ public class MediaCodecEncoderActivity extends AppCompatActivity {
             }
         });
         mBinding.render.setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-        mBinding.startPushStream.setOnClickListener((view) -> {
-        });
     }
 
     @Override
